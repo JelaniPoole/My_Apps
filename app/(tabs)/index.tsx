@@ -1,328 +1,412 @@
 import React from "react";
 import {
-  StyleSheet,
-  Text,
   View,
+  Text,
+  StyleSheet,
   ScrollView,
   Pressable,
   Platform,
+  Dimensions,
 } from "react-native";
-import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Haptics from "expo-haptics";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import Colors from "@/constants/colors";
-import { lessons } from "@/lib/linux-data";
 import { useProgress } from "@/lib/progress-context";
+import { getDailyQuests } from "@/lib/linux-data";
 
-function DifficultyBadge({ difficulty }: { difficulty: string }) {
-  const color =
-    difficulty === "beginner"
-      ? Colors.success
-      : difficulty === "intermediate"
-      ? Colors.warning
-      : Colors.error;
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+const STAT_META: Record<string, { label: string; icon: string; color: string }> = {
+  STR: { label: "STR", icon: "fitness", color: Colors.statSTR },
+  INT: { label: "INT", icon: "bulb", color: Colors.statINT },
+  AGI: { label: "AGI", icon: "flash", color: Colors.statAGI },
+  VIT: { label: "VIT", icon: "heart", color: Colors.statVIT },
+  DEF: { label: "DEF", icon: "shield", color: Colors.statDEF },
+};
+
+function StatBar({ type, value }: { type: string; value: number }) {
+  const meta = STAT_META[type];
+  const maxStat = 50;
+  const pct = Math.min(value / maxStat, 1);
+
   return (
-    <View style={[styles.badge, { backgroundColor: color + "20" }]}>
-      <Text style={[styles.badgeText, { color }]}>{difficulty}</Text>
+    <View style={styles.statRow}>
+      <View style={[styles.statIcon, { backgroundColor: meta.color + "20" }]}>
+        <Ionicons name={meta.icon as any} size={14} color={meta.color} />
+      </View>
+      <Text style={[styles.statLabel, { color: meta.color }]}>{meta.label}</Text>
+      <View style={styles.statBarBg}>
+        <View style={[styles.statBarFill, { width: `${pct * 100}%`, backgroundColor: meta.color }]} />
+      </View>
+      <Text style={[styles.statValue, { color: meta.color }]}>{value}</Text>
     </View>
   );
 }
 
-function LessonCard({
-  lesson,
-  index,
-  completed,
+function DailyQuestCard({
+  quest,
+  progress: questProgress,
+  claimed,
+  onClaim,
 }: {
-  lesson: (typeof lessons)[0];
-  index: number;
-  completed: boolean;
+  quest: { id: string; title: string; description: string; xpReward: number; target: number };
+  progress: number;
+  claimed: boolean;
+  onClaim: () => void;
 }) {
-  function handlePress() {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push({ pathname: "/lesson/[id]", params: { id: lesson.id } });
-  }
+  const done = questProgress >= quest.target;
 
   return (
-    <Pressable
-      onPress={handlePress}
-      style={({ pressed }) => [styles.lessonCard, pressed && styles.pressed]}
-    >
-      <View style={styles.lessonLeft}>
-        <View
-          style={[
-            styles.lessonIcon,
-            completed && { backgroundColor: Colors.terminalGreen + "20" },
-          ]}
-        >
-          {completed ? (
-            <Ionicons name="checkmark-circle" size={24} color={Colors.terminalGreen} />
-          ) : (
-            <Ionicons name={lesson.icon as any} size={24} color={Colors.accent} />
-          )}
-        </View>
-        <View style={styles.lessonInfo}>
-          <Text style={styles.lessonTitle}>{lesson.title}</Text>
-          <Text style={styles.lessonDesc} numberOfLines={1}>
-            {lesson.description}
-          </Text>
-          <View style={styles.lessonMeta}>
-            <DifficultyBadge difficulty={lesson.difficulty} />
-            <View style={styles.xpBadge}>
-              <Ionicons name="star" size={12} color={Colors.xpGold} />
-              <Text style={styles.xpText}>{lesson.xpReward} XP</Text>
-            </View>
+    <View style={[styles.questCard, done && styles.questDone]}>
+      <View style={styles.questLeft}>
+        <Ionicons
+          name={done ? "checkmark-circle" : "radio-button-off"}
+          size={22}
+          color={done ? Colors.success : Colors.textMuted}
+        />
+      </View>
+      <View style={styles.questContent}>
+        <Text style={[styles.questTitle, done && styles.questTitleDone]}>{quest.title}</Text>
+        <Text style={styles.questDesc}>{quest.description}</Text>
+        <View style={styles.questProgressRow}>
+          <View style={styles.questBarBg}>
+            <View
+              style={[
+                styles.questBarFill,
+                { width: `${Math.min(questProgress / quest.target, 1) * 100}%` },
+              ]}
+            />
           </View>
+          <Text style={styles.questProgressText}>
+            {Math.min(questProgress, quest.target)}/{quest.target}
+          </Text>
         </View>
       </View>
-      <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
-    </Pressable>
+      <View style={styles.questRight}>
+        {done && !claimed ? (
+          <Pressable style={styles.claimBtn} onPress={onClaim}>
+            <Text style={styles.claimText}>+{quest.xpReward}</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.xpBadge}>
+            <Ionicons name="star" size={10} color={claimed ? Colors.textMuted : Colors.xpGold} />
+            <Text style={[styles.xpText, claimed && { color: Colors.textMuted }]}>{quest.xpReward}</Text>
+          </View>
+        )}
+      </View>
+    </View>
   );
 }
 
-export default function LearnScreen() {
+export default function HunterDashboard() {
   const insets = useSafeAreaInsets();
-  const { completedLessons, level, xp, xpProgress, currentStreak } = useProgress();
-  const webTopInset = Platform.OS === "web" ? 67 : 0;
+  const {
+    xp,
+    stats,
+    level,
+    xpProgress,
+    rank,
+    nextRank,
+    currentStreak,
+    totalPower,
+    completedLessons,
+    completedChallenges,
+    dailyProgress,
+    addXp,
+    claimDailyQuest,
+    xpIntoCurrentLevel,
+    xpForNextLevel,
+  } = useProgress();
+
+  const today = new Date().toDateString();
+  const quests = getDailyQuests(today);
+
+  function getQuestProgress(quest: { type: string }) {
+    switch (quest.type) {
+      case "lesson":
+        return dailyProgress.lessonsToday;
+      case "challenge":
+        return dailyProgress.challengesToday;
+      case "terminal":
+        return dailyProgress.commandsToday;
+      case "any":
+        return 1;
+      default:
+        return 0;
+    }
+  }
+
+  function handleClaimQuest(questId: string, xpReward: number) {
+    claimDailyQuest(questId);
+    addXp(xpReward);
+  }
+
+  const webTop = Platform.OS === "web" ? 67 : 0;
 
   return (
     <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingTop: insets.top + webTopInset + 16 },
-        ]}
-        contentInsetAdjustmentBehavior="automatic"
+        style={styles.scroll}
+        contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 34 : 20, paddingTop: insets.top + webTop }}
         showsVerticalScrollIndicator={false}
       >
-        <LinearGradient
-          colors={["#0B2A1A", "#0D1117"]}
-          style={styles.headerGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View style={styles.headerRow}>
-            <View>
-              <Text style={styles.greeting}>Terminal Quest</Text>
-              <Text style={styles.subtitle}>
-                Level {level} \u00B7 {xp} XP
-              </Text>
+        <Animated.View entering={FadeInDown.duration(600)}>
+          <LinearGradient
+            colors={[Colors.primary + "30", Colors.background]}
+            style={styles.headerGradient}
+          >
+            <View style={styles.rankBadge}>
+              <Text style={[styles.rankLetter, { color: rank.color }]}>{rank.rank}</Text>
             </View>
-            <View style={styles.streakContainer}>
-              <Ionicons name="flame" size={20} color={Colors.warning} />
-              <Text style={styles.streakText}>{currentStreak}</Text>
+
+            <View style={styles.headerInfo}>
+              <Text style={styles.rankTitle}>{rank.title}</Text>
+              <Text style={styles.levelText}>LV. {level}</Text>
+
+              <View style={styles.xpBarContainer}>
+                <View style={styles.xpBarBg}>
+                  <LinearGradient
+                    colors={[Colors.primary, Colors.accent]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[styles.xpBarFill, { width: `${xpProgress * 100}%` }]}
+                  />
+                </View>
+                <Text style={styles.xpBarText}>
+                  {xpIntoCurrentLevel} / {xpForNextLevel - (level - 1) * (level - 1) * 25} XP
+                </Text>
+              </View>
             </View>
+          </LinearGradient>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(600).delay(100)} style={styles.quickStats}>
+          <View style={styles.quickStatItem}>
+            <Ionicons name="flame" size={20} color={Colors.warning} />
+            <Text style={styles.quickStatValue}>{currentStreak}</Text>
+            <Text style={styles.quickStatLabel}>Streak</Text>
           </View>
-
-          <View style={styles.xpBarContainer}>
-            <View style={styles.xpBarBg}>
-              <View
-                style={[
-                  styles.xpBarFill,
-                  { width: `${Math.min(xpProgress * 100, 100)}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.xpLabel}>
-              {Math.round(xpProgress * 100)}% to Level {level + 1}
-            </Text>
+          <View style={styles.quickStatDivider} />
+          <View style={styles.quickStatItem}>
+            <Ionicons name="flash" size={20} color={Colors.accent} />
+            <Text style={styles.quickStatValue}>{totalPower}</Text>
+            <Text style={styles.quickStatLabel}>Power</Text>
           </View>
-
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{completedLessons.length}</Text>
-              <Text style={styles.statLabel}>Completed</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{lessons.length - completedLessons.length}</Text>
-              <Text style={styles.statLabel}>Remaining</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{lessons.length}</Text>
-              <Text style={styles.statLabel}>Total</Text>
-            </View>
+          <View style={styles.quickStatDivider} />
+          <View style={styles.quickStatItem}>
+            <Ionicons name="trophy" size={20} color={Colors.xpGold} />
+            <Text style={styles.quickStatValue}>{completedLessons.length + completedChallenges.length}</Text>
+            <Text style={styles.quickStatLabel}>Clears</Text>
           </View>
-        </LinearGradient>
+          <View style={styles.quickStatDivider} />
+          <View style={styles.quickStatItem}>
+            <Ionicons name="star" size={20} color={Colors.primary} />
+            <Text style={styles.quickStatValue}>{xp}</Text>
+            <Text style={styles.quickStatLabel}>XP</Text>
+          </View>
+        </Animated.View>
 
-        <Text style={styles.sectionTitle}>Lessons</Text>
+        <Animated.View entering={FadeInDown.duration(600).delay(200)}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="stats-chart" size={18} color={Colors.primary} />
+            <Text style={styles.sectionTitle}>Hunter Stats</Text>
+          </View>
+          <View style={styles.statsCard}>
+            {Object.entries(stats).map(([key, val]) => (
+              <StatBar key={key} type={key} value={val} />
+            ))}
+          </View>
+        </Animated.View>
 
-        {lessons.map((lesson, index) => (
-          <LessonCard
-            key={lesson.id}
-            lesson={lesson}
-            index={index}
-            completed={completedLessons.includes(lesson.id)}
-          />
-        ))}
+        <Animated.View entering={FadeInDown.duration(600).delay(300)}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="today" size={18} color={Colors.warning} />
+            <Text style={styles.sectionTitle}>Daily Quests</Text>
+          </View>
+          {quests.map((quest) => (
+            <DailyQuestCard
+              key={quest.id}
+              quest={quest}
+              progress={getQuestProgress(quest)}
+              claimed={dailyProgress.questsClaimed.includes(quest.id)}
+              onClaim={() => handleClaimQuest(quest.id, quest.xpReward)}
+            />
+          ))}
+        </Animated.View>
 
-        <View style={{ height: 100 }} />
+        {nextRank && (
+          <Animated.View entering={FadeInDown.duration(600).delay(400)}>
+            <View style={styles.nextRankCard}>
+              <Text style={styles.nextRankLabel}>Next Rank</Text>
+              <View style={styles.nextRankRow}>
+                <Text style={[styles.nextRankName, { color: nextRank.color }]}>
+                  {nextRank.title}
+                </Text>
+                <Text style={styles.nextRankReq}>LV. {nextRank.minLevel}</Text>
+              </View>
+              <View style={styles.nextRankBar}>
+                <View
+                  style={[
+                    styles.nextRankFill,
+                    {
+                      width: `${Math.min(level / nextRank.minLevel, 1) * 100}%`,
+                      backgroundColor: nextRank.color,
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+          </Animated.View>
+        )}
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-  },
+  container: { flex: 1, backgroundColor: Colors.background },
+  scroll: { flex: 1 },
+
   headerGradient: {
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-  },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 16,
-  },
-  greeting: {
-    fontSize: 26,
-    fontWeight: "700" as const,
-    color: Colors.text,
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    marginTop: 4,
-  },
-  streakContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.warning + "15",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    marginHorizontal: 16,
+    marginTop: 8,
     borderRadius: 20,
-    gap: 4,
+    borderWidth: 1,
+    borderColor: Colors.primary + "40",
   },
-  streakText: {
-    fontSize: 16,
-    fontWeight: "700" as const,
-    color: Colors.warning,
-  },
-  xpBarContainer: {
-    marginBottom: 16,
-  },
-  xpBarBg: {
-    height: 6,
-    backgroundColor: Colors.border,
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  xpBarFill: {
-    height: "100%",
-    backgroundColor: Colors.terminalGreen,
-    borderRadius: 3,
-  },
-  xpLabel: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    marginTop: 6,
-  },
-  statsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-  },
-  statItem: {
-    alignItems: "center",
-    flex: 1,
-  },
-  statNumber: {
-    fontSize: 22,
-    fontWeight: "700" as const,
-    color: Colors.text,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
-  statDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: Colors.border,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600" as const,
-    color: Colors.text,
-    marginBottom: 12,
-  },
-  lessonCard: {
+  rankBadge: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     backgroundColor: Colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 10,
-    flexDirection: "row",
+    justifyContent: "center",
     alignItems: "center",
-    justifyContent: "space-between",
+    borderWidth: 2,
+    borderColor: Colors.primary + "80",
+  },
+  rankLetter: { fontSize: 32, fontWeight: "900" },
+  headerInfo: { flex: 1, marginLeft: 16 },
+  rankTitle: { color: Colors.text, fontSize: 18, fontWeight: "700" },
+  levelText: { color: Colors.primaryGlow, fontSize: 14, fontWeight: "600", marginTop: 2 },
+  xpBarContainer: { marginTop: 10 },
+  xpBarBg: { height: 8, backgroundColor: Colors.surface, borderRadius: 4, overflow: "hidden" },
+  xpBarFill: { height: "100%", borderRadius: 4 },
+  xpBarText: { color: Colors.textSecondary, fontSize: 11, marginTop: 4 },
+
+  quickStats: {
+    flexDirection: "row",
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 16,
+    paddingVertical: 14,
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  pressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.98 }],
-  },
-  lessonLeft: {
+  quickStatItem: { flex: 1, alignItems: "center" },
+  quickStatValue: { color: Colors.text, fontSize: 18, fontWeight: "700", marginTop: 4 },
+  quickStatLabel: { color: Colors.textMuted, fontSize: 11, marginTop: 2 },
+  quickStatDivider: { width: 1, backgroundColor: Colors.border, marginVertical: 4 },
+
+  sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    flex: 1,
-    gap: 14,
-  },
-  lessonIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: Colors.accent + "15",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  lessonInfo: {
-    flex: 1,
-  },
-  lessonTitle: {
-    fontSize: 16,
-    fontWeight: "600" as const,
-    color: Colors.text,
-  },
-  lessonDesc: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
-  lessonMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 6,
+    marginHorizontal: 20,
+    marginTop: 24,
+    marginBottom: 10,
     gap: 8,
   },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
+  sectionTitle: { color: Colors.text, fontSize: 16, fontWeight: "700" },
+
+  statsCard: {
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: "600" as const,
-    textTransform: "capitalize" as const,
-  },
-  xpBadge: {
+  statRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
+    marginVertical: 5,
   },
-  xpText: {
-    fontSize: 12,
-    color: Colors.xpGold,
-    fontWeight: "500" as const,
+  statIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
   },
+  statLabel: { fontSize: 13, fontWeight: "700", width: 36, marginLeft: 8 },
+  statBarBg: {
+    flex: 1,
+    height: 8,
+    backgroundColor: Colors.background,
+    borderRadius: 4,
+    overflow: "hidden",
+    marginHorizontal: 8,
+  },
+  statBarFill: { height: "100%", borderRadius: 4 },
+  statValue: { fontSize: 14, fontWeight: "700", width: 30, textAlign: "right" },
+
+  questCard: {
+    flexDirection: "row",
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+  },
+  questDone: { borderColor: Colors.success + "40" },
+  questLeft: { marginRight: 12 },
+  questContent: { flex: 1 },
+  questTitle: { color: Colors.text, fontSize: 14, fontWeight: "600" },
+  questTitleDone: { textDecorationLine: "line-through", color: Colors.textMuted },
+  questDesc: { color: Colors.textSecondary, fontSize: 12, marginTop: 2 },
+  questProgressRow: { flexDirection: "row", alignItems: "center", marginTop: 6, gap: 8 },
+  questBarBg: { flex: 1, height: 4, backgroundColor: Colors.background, borderRadius: 2, overflow: "hidden" },
+  questBarFill: { height: "100%", backgroundColor: Colors.accent, borderRadius: 2 },
+  questProgressText: { color: Colors.textMuted, fontSize: 11 },
+  questRight: { marginLeft: 8 },
+  claimBtn: {
+    backgroundColor: Colors.xpGold,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  claimText: { color: Colors.background, fontSize: 12, fontWeight: "700" },
+  xpBadge: { flexDirection: "row", alignItems: "center", gap: 3 },
+  xpText: { color: Colors.xpGold, fontSize: 12, fontWeight: "600" },
+
+  nextRankCard: {
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    marginTop: 20,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  nextRankLabel: { color: Colors.textSecondary, fontSize: 12, fontWeight: "600" },
+  nextRankRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 },
+  nextRankName: { fontSize: 18, fontWeight: "700" },
+  nextRankReq: { color: Colors.textMuted, fontSize: 13 },
+  nextRankBar: {
+    height: 6,
+    backgroundColor: Colors.background,
+    borderRadius: 3,
+    overflow: "hidden",
+    marginTop: 10,
+  },
+  nextRankFill: { height: "100%", borderRadius: 3 },
 });

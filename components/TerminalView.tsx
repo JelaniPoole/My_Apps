@@ -53,7 +53,7 @@ function generateId() {
 
 export default function TerminalView({
   onCommand,
-  prompt = "user@linux:~$",
+  prompt = "hunter@system:~$",
   initialLines = [],
   autoFocus = true,
   disabled = false,
@@ -74,7 +74,7 @@ export default function TerminalView({
   function getPrompt() {
     const home = "/home/user";
     const display = cwd === home ? "~" : cwd.replace(home, "~");
-    return `user@linux:${display}$`;
+    return `hunter@system:${display}$`;
   }
 
   function resolvePath(path: string): string {

@@ -11,20 +11,24 @@ function NativeTabLayout() {
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "book", selected: "book.fill" }} />
-        <Label>Learn</Label>
+        <Icon sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }} />
+        <Label>Hunter</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="dungeons">
+        <Icon sf={{ default: "map", selected: "map.fill" }} />
+        <Label>Dungeons</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="terminal">
         <Icon sf={{ default: "terminal", selected: "terminal.fill" }} />
-        <Label>Terminal</Label>
+        <Label>Training</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="challenges">
-        <Icon sf={{ default: "flag", selected: "flag.fill" }} />
-        <Label>Challenges</Label>
+        <Icon sf={{ default: "bolt.shield", selected: "bolt.shield.fill" }} />
+        <Label>Raids</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="progress">
         <Icon sf={{ default: "chart.bar", selected: "chart.bar.fill" }} />
-        <Label>Progress</Label>
+        <Label>Stats</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -38,12 +42,12 @@ function ClassicTabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors.accent,
+        tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarStyle: {
           position: "absolute",
-          backgroundColor: isIOS ? "transparent" : Colors.background,
-          borderTopWidth: isWeb ? 1 : 0,
+          backgroundColor: isIOS ? "transparent" : Colors.surface,
+          borderTopWidth: 1,
           borderTopColor: Colors.border,
           elevation: 0,
           ...(isWeb ? { height: 84 } : {}),
@@ -52,36 +56,43 @@ function ClassicTabLayout() {
           isIOS ? (
             <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFill} />
           ) : isWeb ? (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.background }]} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.surface }]} />
           ) : null,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Learn",
-          tabBarIcon: ({ color, size }) => <Ionicons name="book" size={size} color={color} />,
+          title: "Hunter",
+          tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="dungeons"
+        options={{
+          title: "Dungeons",
+          tabBarIcon: ({ color, size }) => <Ionicons name="map" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="terminal"
         options={{
-          title: "Terminal",
+          title: "Training",
           tabBarIcon: ({ color, size }) => <Ionicons name="terminal" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="challenges"
         options={{
-          title: "Challenges",
-          tabBarIcon: ({ color, size }) => <Ionicons name="flag" size={size} color={color} />,
+          title: "Raids",
+          tabBarIcon: ({ color, size }) => <Ionicons name="skull" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="progress"
         options={{
-          title: "Progress",
-          tabBarIcon: ({ color, size }) => <Ionicons name="bar-chart" size={size} color={color} />,
+          title: "Stats",
+          tabBarIcon: ({ color, size }) => <Ionicons name="analytics" size={size} color={color} />,
         }}
       />
     </Tabs>
