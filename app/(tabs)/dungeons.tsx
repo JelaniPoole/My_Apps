@@ -7,6 +7,7 @@ import {
   Pressable,
   Modal,
   Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -120,7 +121,11 @@ export default function Dungeons() {
   if (activeLesson) {
     const step = activeLesson.steps[currentStep];
     return (
-      <View style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+      >
         <View style={[styles.dungeonHeader, { paddingTop: insets.top + webTop + 8 }]}>
           <Pressable onPress={closeDungeon} hitSlop={16}>
             <Ionicons name="arrow-back" size={24} color={Colors.text} />
