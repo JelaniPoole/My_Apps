@@ -1,23 +1,48 @@
 const Colors = {
-  background: "#0D1117",
-  surface: "#161B22",
-  surfaceLight: "#1C2333",
-  card: "#1E2736",
-  border: "#30363D",
+  background: "#0A0A12",
+  surface: "#12121F",
+  surfaceLight: "#1A1A2E",
+  card: "#16162A",
+  border: "#2A2A45",
+  borderGlow: "#6C3CE0",
+
+  primary: "#7B2FFF",
+  primaryDim: "#5A1FCC",
+  primaryGlow: "#9B5FFF",
+
+  accent: "#00E5FF",
+  accentDim: "#00A3B5",
+
   terminalGreen: "#39FF14",
   terminalGreenDim: "#1A7A0A",
-  accent: "#00D4FF",
-  accentDim: "#006880",
+
   warning: "#FFB800",
   error: "#FF4757",
   success: "#39FF14",
-  text: "#E6EDF3",
-  textSecondary: "#8B949E",
-  textMuted: "#484F58",
+
+  text: "#E8E8F0",
+  textSecondary: "#8888AA",
+  textMuted: "#555570",
+
   xpGold: "#FFD700",
-  tint: "#00D4FF",
-  tabIconDefault: "#484F58",
-  tabIconSelected: "#00D4FF",
+  xpBlue: "#4DA6FF",
+
+  rankE: "#808080",
+  rankD: "#4DA6FF",
+  rankC: "#39FF14",
+  rankB: "#FFB800",
+  rankA: "#FF6B35",
+  rankS: "#FF2D55",
+
+  tint: "#7B2FFF",
+  tabIconDefault: "#555570",
+  tabIconSelected: "#7B2FFF",
+
+  statSTR: "#FF4757",
+  statINT: "#4DA6FF",
+  statAGI: "#39FF14",
+  statVIT: "#FFB800",
+  statDEF: "#9B5FFF",
 };
 
 export default Colors;
