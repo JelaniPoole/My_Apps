@@ -8,6 +8,7 @@ import {
   Modal,
   TextInput,
   Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -163,7 +164,10 @@ export default function BossRaids() {
       </ScrollView>
 
       <Modal visible={!!activeChallenge && !showVictory} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
           <View style={styles.battleCard}>
             <LinearGradient colors={[Colors.error + "20", Colors.surface]} style={styles.battleGradient}>
               <View style={styles.battleHeader}>
@@ -220,7 +224,7 @@ export default function BossRaids() {
               </View>
             </LinearGradient>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal visible={showVictory} transparent animationType="fade">

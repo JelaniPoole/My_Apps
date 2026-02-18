@@ -192,7 +192,7 @@ export default function Dungeons() {
             </Animated.View>
           </View>
         </Modal>
-      </View>
+      </KeyboardAvoidingView>
     );
   }
 
