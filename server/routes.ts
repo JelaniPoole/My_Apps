@@ -46,6 +46,91 @@ const QUEST_STEPS: Record<string, RunStep[]> = {
   ],
 };
 
+type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
+type ItemSlot = "weapon" | "armor" | "accessory" | "consumable";
+
+interface LootItem {
+  id: string;
+  name: string;
+  description: string;
+  rarity: Rarity;
+  slot: ItemSlot;
+  statBonus: Partial<Record<"STR" | "INT" | "AGI" | "VIT" | "DEF", number>>;
+  icon: string;
+}
+
+interface InventoryItem extends LootItem {
+  equipped: boolean;
+  acquiredAt: string;
+}
+
+const RARITY_WEIGHTS: Record<Rarity, number> = {
+  common: 50,
+  uncommon: 28,
+  rare: 15,
+  epic: 6,
+  legendary: 1,
+};
+
+const RARITY_COLORS: Record<Rarity, string> = {
+  common: "#9CA3AF",
+  uncommon: "#22C55E",
+  rare: "#3B82F6",
+  epic: "#A855F7",
+  legendary: "#F59E0B",
+};
+
+const LOOT_TABLE: Omit<LootItem, "id">[] = [
+  { name: "Rusty Dagger", description: "A basic blade for file slicing", rarity: "common", slot: "weapon", statBonus: { STR: 1 }, icon: "dagger" },
+  { name: "Worn Leather Vest", description: "Minimal protection from errors", rarity: "common", slot: "armor", statBonus: { DEF: 1 }, icon: "vest" },
+  { name: "Cracked Compass", description: "Helps navigate directories", rarity: "common", slot: "accessory", statBonus: { AGI: 1 }, icon: "compass" },
+  { name: "Scroll of Echo", description: "Echoes your commands louder", rarity: "common", slot: "consumable", statBonus: { INT: 1 }, icon: "scroll" },
+  { name: "Health Potion", description: "Restores system vitality", rarity: "common", slot: "consumable", statBonus: { VIT: 1 }, icon: "potion" },
+
+  { name: "Steel Shortsword", description: "Cuts through files with ease", rarity: "uncommon", slot: "weapon", statBonus: { STR: 2, AGI: 1 }, icon: "sword" },
+  { name: "Chainmail Shirt", description: "Layered defense against bugs", rarity: "uncommon", slot: "armor", statBonus: { DEF: 2, VIT: 1 }, icon: "chainmail" },
+  { name: "Navigator's Ring", description: "cd without getting lost", rarity: "uncommon", slot: "accessory", statBonus: { AGI: 2, INT: 1 }, icon: "ring" },
+  { name: "Manual of grep", description: "Search patterns revealed", rarity: "uncommon", slot: "accessory", statBonus: { INT: 2, STR: 1 }, icon: "book" },
+  { name: "Vitality Stone", description: "Keeps processes alive", rarity: "uncommon", slot: "consumable", statBonus: { VIT: 2, DEF: 1 }, icon: "stone" },
+
+  { name: "Shadow Blade", description: "Operates silently in the background", rarity: "rare", slot: "weapon", statBonus: { STR: 4, AGI: 2 }, icon: "shadow-blade" },
+  { name: "Mithril Plate", description: "Lightweight but tough permissions", rarity: "rare", slot: "armor", statBonus: { DEF: 4, VIT: 2 }, icon: "plate" },
+  { name: "Amulet of sudo", description: "Elevates your authority", rarity: "rare", slot: "accessory", statBonus: { DEF: 3, STR: 2, INT: 1 }, icon: "amulet" },
+  { name: "Tome of Regex", description: "Master of pattern matching", rarity: "rare", slot: "accessory", statBonus: { INT: 4, AGI: 2 }, icon: "tome" },
+
+  { name: "Demon King's Axe", description: "Cleaves entire directories", rarity: "epic", slot: "weapon", statBonus: { STR: 7, AGI: 3, VIT: 2 }, icon: "axe" },
+  { name: "Dragon Scale Armor", description: "Firewall-grade protection", rarity: "epic", slot: "armor", statBonus: { DEF: 7, VIT: 3, STR: 2 }, icon: "dragon-armor" },
+  { name: "Crown of Root", description: "Unlimited power over the system", rarity: "epic", slot: "accessory", statBonus: { INT: 5, DEF: 4, STR: 3 }, icon: "crown" },
+
+  { name: "Monarch's Blade of Shadows", description: "The weapon of the Shadow Monarch himself", rarity: "legendary", slot: "weapon", statBonus: { STR: 12, AGI: 8, INT: 5, VIT: 3, DEF: 2 }, icon: "monarch-blade" },
+  { name: "Armor of the Absolute", description: "Worn by those who conquered every dungeon", rarity: "legendary", slot: "armor", statBonus: { DEF: 12, VIT: 8, STR: 5, AGI: 3, INT: 2 }, icon: "absolute-armor" },
+  { name: "Ring of System Mastery", description: "Total command over all processes", rarity: "legendary", slot: "accessory", statBonus: { INT: 10, AGI: 6, STR: 5, DEF: 5, VIT: 4 }, icon: "mastery-ring" },
+];
+
+const inventory: InventoryItem[] = [];
+
+function rollRarity(): Rarity {
+  const totalWeight = Object.values(RARITY_WEIGHTS).reduce((a, b) => a + b, 0);
+  let roll = Math.random() * totalWeight;
+  for (const [rarity, weight] of Object.entries(RARITY_WEIGHTS)) {
+    roll -= weight;
+    if (roll <= 0) return rarity as Rarity;
+  }
+  return "common";
+}
+
+function dropLoot(): InventoryItem {
+  const rarity = rollRarity();
+  const candidates = LOOT_TABLE.filter((item) => item.rarity === rarity);
+  const picked = candidates[Math.floor(Math.random() * candidates.length)];
+  return {
+    ...picked,
+    id: generateId(),
+    equipped: false,
+    acquiredAt: new Date().toISOString(),
+  };
+}
+
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 }
@@ -227,6 +312,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         run.status = "completed";
         run.completedAt = new Date().toISOString();
+        const loot = dropLoot();
+        inventory.push(loot);
         return res.json({
           correct: true,
           output: step.output,
@@ -234,6 +321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           completed: true,
           currentStep: run.currentStep,
           totalSteps: run.steps.length,
+          lootDrop: loot,
           run,
         });
       }
@@ -247,6 +335,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         run,
       });
     }
+  });
+
+  app.get("/api/inventory", (_req: Request, res: Response) => {
+    const equipped = inventory.filter((i) => i.equipped);
+    const totalBonus: Record<string, number> = {};
+    for (const item of equipped) {
+      for (const [stat, val] of Object.entries(item.statBonus)) {
+        totalBonus[stat] = (totalBonus[stat] || 0) + (val || 0);
+      }
+    }
+
+    res.json({
+      items: inventory,
+      equipped,
+      totalStatBonus: totalBonus,
+      rarityColors: RARITY_COLORS,
+    });
+  });
+
+  app.post("/api/inventory/equip", (req: Request, res: Response) => {
+    const { itemId, unequip } = req.body || {};
+
+    if (!itemId) {
+      return res.status(400).json({ error: "Missing 'itemId' in request body" });
+    }
+
+    const item = inventory.find((i) => i.id === itemId);
+    if (!item) {
+      return res.status(404).json({ error: "Item not found in inventory" });
+    }
+
+    if (unequip) {
+      item.equipped = false;
+      return res.json({ action: "unequipped", item, message: `${item.name} unequipped` });
+    }
+
+    if (item.slot !== "consumable") {
+      const alreadyEquipped = inventory.find(
+        (i) => i.equipped && i.slot === item.slot && i.id !== item.id
+      );
+      if (alreadyEquipped) {
+        alreadyEquipped.equipped = false;
+      }
+    }
+
+    item.equipped = true;
+    res.json({ action: "equipped", item, message: `${item.name} equipped!` });
   });
 
   const httpServer = createServer(app);
