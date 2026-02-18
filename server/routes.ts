@@ -1,5 +1,8 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+import { eq, and } from "drizzle-orm";
+import { db } from "./db";
+import { players, quests, runs, items } from "../shared/schema";
 
 interface RunStep {
   index: number;
@@ -11,18 +14,6 @@ interface RunStep {
   completed: boolean;
   submittedCommand?: string;
 }
-
-interface Run {
-  id: string;
-  questId: string;
-  status: "in_progress" | "completed" | "failed";
-  currentStep: number;
-  steps: RunStep[];
-  startedAt: string;
-  completedAt?: string;
-}
-
-const runs = new Map<string, Run>();
 
 const QUEST_STEPS: Record<string, RunStep[]> = {
   lesson: [
@@ -47,22 +38,6 @@ const QUEST_STEPS: Record<string, RunStep[]> = {
 };
 
 type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
-type ItemSlot = "weapon" | "armor" | "accessory" | "consumable";
-
-interface LootItem {
-  id: string;
-  name: string;
-  description: string;
-  rarity: Rarity;
-  slot: ItemSlot;
-  statBonus: Partial<Record<"STR" | "INT" | "AGI" | "VIT" | "DEF", number>>;
-  icon: string;
-}
-
-interface InventoryItem extends LootItem {
-  equipped: boolean;
-  acquiredAt: string;
-}
 
 const RARITY_WEIGHTS: Record<Rarity, number> = {
   common: 50,
@@ -80,98 +55,65 @@ const RARITY_COLORS: Record<Rarity, string> = {
   legendary: "#F59E0B",
 };
 
-const LOOT_TABLE: Omit<LootItem, "id">[] = [
+const LOOT_TABLE = [
   { name: "Rusty Dagger", description: "A basic blade for file slicing", rarity: "common", slot: "weapon", statBonus: { STR: 1 }, icon: "dagger" },
   { name: "Worn Leather Vest", description: "Minimal protection from errors", rarity: "common", slot: "armor", statBonus: { DEF: 1 }, icon: "vest" },
   { name: "Cracked Compass", description: "Helps navigate directories", rarity: "common", slot: "accessory", statBonus: { AGI: 1 }, icon: "compass" },
   { name: "Scroll of Echo", description: "Echoes your commands louder", rarity: "common", slot: "consumable", statBonus: { INT: 1 }, icon: "scroll" },
   { name: "Health Potion", description: "Restores system vitality", rarity: "common", slot: "consumable", statBonus: { VIT: 1 }, icon: "potion" },
-
   { name: "Steel Shortsword", description: "Cuts through files with ease", rarity: "uncommon", slot: "weapon", statBonus: { STR: 2, AGI: 1 }, icon: "sword" },
   { name: "Chainmail Shirt", description: "Layered defense against bugs", rarity: "uncommon", slot: "armor", statBonus: { DEF: 2, VIT: 1 }, icon: "chainmail" },
   { name: "Navigator's Ring", description: "cd without getting lost", rarity: "uncommon", slot: "accessory", statBonus: { AGI: 2, INT: 1 }, icon: "ring" },
   { name: "Manual of grep", description: "Search patterns revealed", rarity: "uncommon", slot: "accessory", statBonus: { INT: 2, STR: 1 }, icon: "book" },
   { name: "Vitality Stone", description: "Keeps processes alive", rarity: "uncommon", slot: "consumable", statBonus: { VIT: 2, DEF: 1 }, icon: "stone" },
-
   { name: "Shadow Blade", description: "Operates silently in the background", rarity: "rare", slot: "weapon", statBonus: { STR: 4, AGI: 2 }, icon: "shadow-blade" },
   { name: "Mithril Plate", description: "Lightweight but tough permissions", rarity: "rare", slot: "armor", statBonus: { DEF: 4, VIT: 2 }, icon: "plate" },
   { name: "Amulet of sudo", description: "Elevates your authority", rarity: "rare", slot: "accessory", statBonus: { DEF: 3, STR: 2, INT: 1 }, icon: "amulet" },
   { name: "Tome of Regex", description: "Master of pattern matching", rarity: "rare", slot: "accessory", statBonus: { INT: 4, AGI: 2 }, icon: "tome" },
-
   { name: "Demon King's Axe", description: "Cleaves entire directories", rarity: "epic", slot: "weapon", statBonus: { STR: 7, AGI: 3, VIT: 2 }, icon: "axe" },
   { name: "Dragon Scale Armor", description: "Firewall-grade protection", rarity: "epic", slot: "armor", statBonus: { DEF: 7, VIT: 3, STR: 2 }, icon: "dragon-armor" },
   { name: "Crown of Root", description: "Unlimited power over the system", rarity: "epic", slot: "accessory", statBonus: { INT: 5, DEF: 4, STR: 3 }, icon: "crown" },
-
   { name: "Monarch's Blade of Shadows", description: "The weapon of the Shadow Monarch himself", rarity: "legendary", slot: "weapon", statBonus: { STR: 12, AGI: 8, INT: 5, VIT: 3, DEF: 2 }, icon: "monarch-blade" },
   { name: "Armor of the Absolute", description: "Worn by those who conquered every dungeon", rarity: "legendary", slot: "armor", statBonus: { DEF: 12, VIT: 8, STR: 5, AGI: 3, INT: 2 }, icon: "absolute-armor" },
   { name: "Ring of System Mastery", description: "Total command over all processes", rarity: "legendary", slot: "accessory", statBonus: { INT: 10, AGI: 6, STR: 5, DEF: 5, VIT: 4 }, icon: "mastery-ring" },
 ];
 
-const inventory: InventoryItem[] = [];
-
-function rollRarity(): Rarity {
-  const totalWeight = Object.values(RARITY_WEIGHTS).reduce((a, b) => a + b, 0);
-  let roll = Math.random() * totalWeight;
-  for (const [rarity, weight] of Object.entries(RARITY_WEIGHTS)) {
-    roll -= weight;
-    if (roll <= 0) return rarity as Rarity;
-  }
-  return "common";
-}
-
-function dropLoot(): InventoryItem {
-  const rarity = rollRarity();
-  const candidates = LOOT_TABLE.filter((item) => item.rarity === rarity);
-  const picked = candidates[Math.floor(Math.random() * candidates.length)];
-  return {
-    ...picked,
-    id: generateId(),
-    equipped: false,
-    acquiredAt: new Date().toISOString(),
-  };
-}
-
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-}
-
-interface Quest {
-  id: string;
+interface QuestTemplate {
   title: string;
   description: string;
   xpReward: number;
-  type: "lesson" | "challenge" | "terminal" | "any";
+  type: string;
   target: number;
   rank: string;
 }
 
-const QUEST_POOL: Record<string, Quest[]> = {
+const QUEST_POOL: Record<string, QuestTemplate[]> = {
   E: [
-    { id: "", title: "Clear 1 Dungeon", description: "Complete any lesson", xpReward: 25, type: "lesson", target: 1, rank: "E" },
-    { id: "", title: "Defeat 1 Boss", description: "Complete any challenge", xpReward: 30, type: "challenge", target: 1, rank: "E" },
-    { id: "", title: "Run 5 Commands", description: "Practice in the training ground", xpReward: 15, type: "terminal", target: 5, rank: "E" },
-    { id: "", title: "Run 10 Commands", description: "Train harder today", xpReward: 20, type: "terminal", target: 10, rank: "E" },
-    { id: "", title: "Stay Active", description: "Open the app today", xpReward: 10, type: "any", target: 1, rank: "E" },
-    { id: "", title: "Clear 2 Dungeons", description: "Complete 2 lessons", xpReward: 50, type: "lesson", target: 2, rank: "E" },
-    { id: "", title: "Defeat 2 Bosses", description: "Complete 2 challenges", xpReward: 60, type: "challenge", target: 2, rank: "E" },
+    { title: "Clear 1 Dungeon", description: "Complete any lesson", xpReward: 25, type: "lesson", target: 1, rank: "E" },
+    { title: "Defeat 1 Boss", description: "Complete any challenge", xpReward: 30, type: "challenge", target: 1, rank: "E" },
+    { title: "Run 5 Commands", description: "Practice in the training ground", xpReward: 15, type: "terminal", target: 5, rank: "E" },
+    { title: "Run 10 Commands", description: "Train harder today", xpReward: 20, type: "terminal", target: 10, rank: "E" },
+    { title: "Stay Active", description: "Open the app today", xpReward: 10, type: "any", target: 1, rank: "E" },
+    { title: "Clear 2 Dungeons", description: "Complete 2 lessons", xpReward: 50, type: "lesson", target: 2, rank: "E" },
+    { title: "Defeat 2 Bosses", description: "Complete 2 challenges", xpReward: 60, type: "challenge", target: 2, rank: "E" },
   ],
   D: [
-    { id: "", title: "Clear 2 Dungeons", description: "Push through 2 lessons", xpReward: 60, type: "lesson", target: 2, rank: "D" },
-    { id: "", title: "Defeat 2 Bosses", description: "Take on 2 bosses", xpReward: 70, type: "challenge", target: 2, rank: "D" },
-    { id: "", title: "Run 20 Commands", description: "Serious training session", xpReward: 35, type: "terminal", target: 20, rank: "D" },
-    { id: "", title: "Clear 3 Dungeons", description: "A real grind", xpReward: 80, type: "lesson", target: 3, rank: "D" },
-    { id: "", title: "Stay Active", description: "Show up every day", xpReward: 15, type: "any", target: 1, rank: "D" },
-    { id: "", title: "Defeat 3 Bosses", description: "Triple threat", xpReward: 90, type: "challenge", target: 3, rank: "D" },
-    { id: "", title: "Run 30 Commands", description: "Command mastery", xpReward: 45, type: "terminal", target: 30, rank: "D" },
+    { title: "Clear 2 Dungeons", description: "Push through 2 lessons", xpReward: 60, type: "lesson", target: 2, rank: "D" },
+    { title: "Defeat 2 Bosses", description: "Take on 2 bosses", xpReward: 70, type: "challenge", target: 2, rank: "D" },
+    { title: "Run 20 Commands", description: "Serious training session", xpReward: 35, type: "terminal", target: 20, rank: "D" },
+    { title: "Clear 3 Dungeons", description: "A real grind", xpReward: 80, type: "lesson", target: 3, rank: "D" },
+    { title: "Stay Active", description: "Show up every day", xpReward: 15, type: "any", target: 1, rank: "D" },
+    { title: "Defeat 3 Bosses", description: "Triple threat", xpReward: 90, type: "challenge", target: 3, rank: "D" },
+    { title: "Run 30 Commands", description: "Command mastery", xpReward: 45, type: "terminal", target: 30, rank: "D" },
   ],
   C: [
-    { id: "", title: "Clear 3 Dungeons", description: "Clear 3 dungeons today", xpReward: 90, type: "lesson", target: 3, rank: "C" },
-    { id: "", title: "Defeat 3 Bosses", description: "Defeat 3 bosses", xpReward: 100, type: "challenge", target: 3, rank: "C" },
-    { id: "", title: "Run 40 Commands", description: "Intense training", xpReward: 50, type: "terminal", target: 40, rank: "C" },
-    { id: "", title: "Clear 4 Dungeons", description: "Dungeon marathon", xpReward: 120, type: "lesson", target: 4, rank: "C" },
-    { id: "", title: "Stay Active", description: "Consistency is key", xpReward: 20, type: "any", target: 1, rank: "C" },
-    { id: "", title: "Defeat 4 Bosses", description: "Boss rush", xpReward: 130, type: "challenge", target: 4, rank: "C" },
-    { id: "", title: "Run 50 Commands", description: "Elite training", xpReward: 60, type: "terminal", target: 50, rank: "C" },
+    { title: "Clear 3 Dungeons", description: "Clear 3 dungeons today", xpReward: 90, type: "lesson", target: 3, rank: "C" },
+    { title: "Defeat 3 Bosses", description: "Defeat 3 bosses", xpReward: 100, type: "challenge", target: 3, rank: "C" },
+    { title: "Run 40 Commands", description: "Intense training", xpReward: 50, type: "terminal", target: 40, rank: "C" },
+    { title: "Clear 4 Dungeons", description: "Dungeon marathon", xpReward: 120, type: "lesson", target: 4, rank: "C" },
+    { title: "Stay Active", description: "Consistency is key", xpReward: 20, type: "any", target: 1, rank: "C" },
+    { title: "Defeat 4 Bosses", description: "Boss rush", xpReward: 130, type: "challenge", target: 4, rank: "C" },
+    { title: "Run 50 Commands", description: "Elite training", xpReward: 60, type: "terminal", target: 50, rank: "C" },
   ],
 };
 
@@ -184,17 +126,20 @@ const QUEST_POOL: Record<string, Quest[]> = {
   }));
 });
 
-let storedQuests: Quest[] = [];
-let storedQuestsDate = "";
+function rollRarity(): Rarity {
+  const totalWeight = Object.values(RARITY_WEIGHTS).reduce((a, b) => a + b, 0);
+  let roll = Math.random() * totalWeight;
+  for (const [rarity, weight] of Object.entries(RARITY_WEIGHTS)) {
+    roll -= weight;
+    if (roll <= 0) return rarity as Rarity;
+  }
+  return "common";
+}
 
-function generateQuests(rank: string): Quest[] {
-  const pool = QUEST_POOL[rank] || QUEST_POOL["E"];
-  const shuffled = [...pool].sort(() => Math.random() - 0.5);
-  const selected = shuffled.slice(0, 5);
-  return selected.map((q, i) => ({
-    ...q,
-    id: `quest_${Date.now()}_${i}`,
-  }));
+function pickLoot() {
+  const rarity = rollRarity();
+  const candidates = LOOT_TABLE.filter((item) => item.rarity === rarity);
+  return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -202,186 +147,278 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ status: "ok" });
   });
 
-  app.get("/api/me", (_req, res) => {
-    res.json({
-      id: 1,
-      name: "Hunter",
-      rank: "E",
-      level: 1,
-      xp: 0,
-      stats: { STR: 1, INT: 1, AGI: 1, VIT: 1, DEF: 1 },
-      title: "E-Rank Hunter",
-    });
+  app.get("/api/me", async (_req: Request, res: Response) => {
+    try {
+      let [player] = await db.select().from(players).limit(1);
+      if (!player) {
+        [player] = await db.insert(players).values({
+          name: "Hunter",
+          rank: "E",
+          level: 1,
+          xp: 0,
+          stats: { STR: 1, INT: 1, AGI: 1, VIT: 1, DEF: 1 },
+          title: "E-Rank Hunter",
+        }).returning();
+      }
+      res.json(player);
+    } catch (err) {
+      console.error("Error in /api/me:", err);
+      res.status(500).json({ error: "Internal server error" });
+    }
   });
 
-  app.post("/api/quests/generate", (req, res) => {
-    const rank = (req.body?.rank as string) || "E";
-    const today = new Date().toISOString().slice(0, 10);
+  app.post("/api/quests/generate", async (req: Request, res: Response) => {
+    try {
+      const rank = ((req.body?.rank as string) || "E").toUpperCase();
+      const today = new Date().toISOString().slice(0, 10);
 
-    storedQuests = generateQuests(rank.toUpperCase());
-    storedQuestsDate = today;
+      await db.delete(quests).where(eq(quests.date, today));
 
-    res.json({ date: today, quests: storedQuests });
+      const pool = QUEST_POOL[rank] || QUEST_POOL["E"];
+      const shuffled = [...pool].sort(() => Math.random() - 0.5);
+      const selected = shuffled.slice(0, 5);
+
+      const inserted = await db.insert(quests).values(
+        selected.map((q) => ({
+          title: q.title,
+          description: q.description,
+          xpReward: q.xpReward,
+          type: q.type,
+          target: q.target,
+          rank: q.rank,
+          date: today,
+        }))
+      ).returning();
+
+      res.json({ date: today, quests: inserted });
+    } catch (err) {
+      console.error("Error in /api/quests/generate:", err);
+      res.status(500).json({ error: "Internal server error" });
+    }
   });
 
-  app.get("/api/quests/today", (_req, res) => {
-    const today = new Date().toISOString().slice(0, 10);
+  app.get("/api/quests/today", async (_req: Request, res: Response) => {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      let todayQuests = await db.select().from(quests).where(eq(quests.date, today));
 
-    if (storedQuestsDate !== today || storedQuests.length === 0) {
-      storedQuests = generateQuests("E");
-      storedQuestsDate = today;
+      if (todayQuests.length === 0) {
+        const pool = QUEST_POOL["E"];
+        const shuffled = [...pool].sort(() => Math.random() - 0.5);
+        const selected = shuffled.slice(0, 5);
+
+        todayQuests = await db.insert(quests).values(
+          selected.map((q) => ({
+            title: q.title,
+            description: q.description,
+            xpReward: q.xpReward,
+            type: q.type,
+            target: q.target,
+            rank: q.rank,
+            date: today,
+          }))
+        ).returning();
+      }
+
+      res.json({ date: today, quests: todayQuests });
+    } catch (err) {
+      console.error("Error in /api/quests/today:", err);
+      res.status(500).json({ error: "Internal server error" });
     }
-
-    res.json({ date: storedQuestsDate, quests: storedQuests });
   });
 
-  app.post("/api/quests/:id/start", (req: Request, res: Response) => {
-    const questId = req.params.id as string;
-    const quest = storedQuests.find((q) => q.id === questId);
+  app.post("/api/quests/:id/start", async (req: Request, res: Response) => {
+    try {
+      const questId = req.params.id as string;
+      const [quest] = await db.select().from(quests).where(eq(quests.id, questId));
 
-    if (!quest) {
-      return res.status(404).json({ error: "Quest not found" });
+      if (!quest) {
+        return res.status(404).json({ error: "Quest not found" });
+      }
+
+      const [existingRun] = await db.select().from(runs)
+        .where(and(eq(runs.questId, questId), eq(runs.status, "in_progress")));
+
+      if (existingRun) {
+        return res.json(existingRun);
+      }
+
+      const templateSteps = QUEST_STEPS[quest.type] || QUEST_STEPS["any"];
+      const steps: RunStep[] = templateSteps.map((s) => ({ ...s, completed: false, submittedCommand: undefined }));
+
+      const [run] = await db.insert(runs).values({
+        questId,
+        status: "in_progress",
+        currentStep: 0,
+        steps,
+      }).returning();
+
+      res.json(run);
+    } catch (err) {
+      console.error("Error in /api/quests/:id/start:", err);
+      res.status(500).json({ error: "Internal server error" });
     }
-
-    const existingRun = Array.from(runs.values()).find(
-      (r) => r.questId === questId && r.status === "in_progress"
-    );
-    if (existingRun) {
-      return res.json(existingRun);
-    }
-
-    const templateSteps = QUEST_STEPS[quest.type] || QUEST_STEPS["any"];
-    const steps: RunStep[] = templateSteps.map((s) => ({ ...s, completed: false, submittedCommand: undefined }));
-
-    const run: Run = {
-      id: generateId(),
-      questId,
-      status: "in_progress",
-      currentStep: 0,
-      steps,
-      startedAt: new Date().toISOString(),
-    };
-
-    runs.set(run.id, run);
-    res.json(run);
   });
 
-  app.post("/api/runs/:runId/submit", (req: Request, res: Response) => {
-    const runId = req.params.runId as string;
-    const { command } = req.body || {};
+  app.post("/api/runs/:runId/submit", async (req: Request, res: Response) => {
+    try {
+      const runId = req.params.runId as string;
+      const { command } = req.body || {};
 
-    const run = runs.get(runId);
-    if (!run) {
-      return res.status(404).json({ error: "Run not found" });
-    }
+      const [run] = await db.select().from(runs).where(eq(runs.id, runId));
+      if (!run) {
+        return res.status(404).json({ error: "Run not found" });
+      }
 
-    if (run.status === "completed") {
-      return res.status(400).json({ error: "Run already completed", run });
-    }
+      if (run.status === "completed") {
+        return res.status(400).json({ error: "Run already completed", run });
+      }
 
-    if (!command || typeof command !== "string") {
-      return res.status(400).json({ error: "Missing 'command' in request body" });
-    }
+      if (!command || typeof command !== "string") {
+        return res.status(400).json({ error: "Missing 'command' in request body" });
+      }
 
-    const step = run.steps[run.currentStep];
-    if (!step) {
-      return res.status(400).json({ error: "No current step available" });
-    }
+      const stepsData = run.steps as RunStep[];
+      const step = stepsData[run.currentStep];
+      if (!step) {
+        return res.status(400).json({ error: "No current step available" });
+      }
 
-    const trimmed = command.trim().toLowerCase();
-    const expected = step.expectedCommand.toLowerCase();
-    const correct = trimmed === expected;
+      const trimmed = command.trim().toLowerCase();
+      const expected = step.expectedCommand.toLowerCase();
+      const correct = trimmed === expected;
 
-    step.submittedCommand = command.trim();
+      step.submittedCommand = command.trim();
 
-    if (correct) {
-      step.completed = true;
+      if (correct) {
+        step.completed = true;
 
-      if (run.currentStep < run.steps.length - 1) {
-        run.currentStep++;
-        return res.json({
-          correct: true,
-          output: step.output,
-          successMessage: step.successMessage,
-          completed: false,
-          currentStep: run.currentStep,
-          totalSteps: run.steps.length,
-          nextInstruction: run.steps[run.currentStep].instruction,
-          run,
-        });
+        if (run.currentStep < stepsData.length - 1) {
+          const newStep = run.currentStep + 1;
+          const [updatedRun] = await db.update(runs)
+            .set({ steps: stepsData, currentStep: newStep })
+            .where(eq(runs.id, runId))
+            .returning();
+
+          return res.json({
+            correct: true,
+            output: step.output,
+            successMessage: step.successMessage,
+            completed: false,
+            currentStep: newStep,
+            totalSteps: stepsData.length,
+            nextInstruction: stepsData[newStep].instruction,
+            run: updatedRun,
+          });
+        } else {
+          const [updatedRun] = await db.update(runs)
+            .set({ steps: stepsData, status: "completed", completedAt: new Date() })
+            .where(eq(runs.id, runId))
+            .returning();
+
+          const lootData = pickLoot();
+          const [lootItem] = await db.insert(items).values({
+            name: lootData.name,
+            description: lootData.description,
+            rarity: lootData.rarity,
+            slot: lootData.slot,
+            statBonus: lootData.statBonus,
+            icon: lootData.icon,
+            equipped: false,
+          }).returning();
+
+          return res.json({
+            correct: true,
+            output: step.output,
+            successMessage: step.successMessage,
+            completed: true,
+            currentStep: run.currentStep,
+            totalSteps: stepsData.length,
+            lootDrop: lootItem,
+            run: updatedRun,
+          });
+        }
       } else {
-        run.status = "completed";
-        run.completedAt = new Date().toISOString();
-        const loot = dropLoot();
-        inventory.push(loot);
+        await db.update(runs)
+          .set({ steps: stepsData })
+          .where(eq(runs.id, runId));
+
         return res.json({
-          correct: true,
-          output: step.output,
-          successMessage: step.successMessage,
-          completed: true,
+          correct: false,
+          hint: step.hint,
+          instruction: step.instruction,
           currentStep: run.currentStep,
-          totalSteps: run.steps.length,
-          lootDrop: loot,
-          run,
+          totalSteps: stepsData.length,
+          run: { ...run, steps: stepsData },
         });
       }
-    } else {
-      return res.json({
-        correct: false,
-        hint: step.hint,
-        instruction: step.instruction,
-        currentStep: run.currentStep,
-        totalSteps: run.steps.length,
-        run,
+    } catch (err) {
+      console.error("Error in /api/runs/:runId/submit:", err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/inventory", async (_req: Request, res: Response) => {
+    try {
+      const allItems = await db.select().from(items);
+      const equipped = allItems.filter((i) => i.equipped);
+      const totalBonus: Record<string, number> = {};
+      for (const item of equipped) {
+        const bonus = item.statBonus as Record<string, number>;
+        for (const [stat, val] of Object.entries(bonus)) {
+          totalBonus[stat] = (totalBonus[stat] || 0) + (val || 0);
+        }
+      }
+
+      res.json({
+        items: allItems,
+        equipped,
+        totalStatBonus: totalBonus,
+        rarityColors: RARITY_COLORS,
       });
+    } catch (err) {
+      console.error("Error in /api/inventory:", err);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 
-  app.get("/api/inventory", (_req: Request, res: Response) => {
-    const equipped = inventory.filter((i) => i.equipped);
-    const totalBonus: Record<string, number> = {};
-    for (const item of equipped) {
-      for (const [stat, val] of Object.entries(item.statBonus)) {
-        totalBonus[stat] = (totalBonus[stat] || 0) + (val || 0);
+  app.post("/api/inventory/equip", async (req: Request, res: Response) => {
+    try {
+      const { itemId, unequip } = req.body || {};
+
+      if (!itemId) {
+        return res.status(400).json({ error: "Missing 'itemId' in request body" });
       }
-    }
 
-    res.json({
-      items: inventory,
-      equipped,
-      totalStatBonus: totalBonus,
-      rarityColors: RARITY_COLORS,
-    });
-  });
-
-  app.post("/api/inventory/equip", (req: Request, res: Response) => {
-    const { itemId, unequip } = req.body || {};
-
-    if (!itemId) {
-      return res.status(400).json({ error: "Missing 'itemId' in request body" });
-    }
-
-    const item = inventory.find((i) => i.id === itemId);
-    if (!item) {
-      return res.status(404).json({ error: "Item not found in inventory" });
-    }
-
-    if (unequip) {
-      item.equipped = false;
-      return res.json({ action: "unequipped", item, message: `${item.name} unequipped` });
-    }
-
-    if (item.slot !== "consumable") {
-      const alreadyEquipped = inventory.find(
-        (i) => i.equipped && i.slot === item.slot && i.id !== item.id
-      );
-      if (alreadyEquipped) {
-        alreadyEquipped.equipped = false;
+      const [item] = await db.select().from(items).where(eq(items.id, itemId));
+      if (!item) {
+        return res.status(404).json({ error: "Item not found in inventory" });
       }
-    }
 
-    item.equipped = true;
-    res.json({ action: "equipped", item, message: `${item.name} equipped!` });
+      if (unequip) {
+        const [updated] = await db.update(items)
+          .set({ equipped: false })
+          .where(eq(items.id, itemId))
+          .returning();
+        return res.json({ action: "unequipped", item: updated, message: `${updated.name} unequipped` });
+      }
+
+      if (item.slot !== "consumable") {
+        await db.update(items)
+          .set({ equipped: false })
+          .where(and(eq(items.equipped, true), eq(items.slot, item.slot)));
+      }
+
+      const [updated] = await db.update(items)
+        .set({ equipped: true })
+        .where(eq(items.id, itemId))
+        .returning();
+
+      res.json({ action: "equipped", item: updated, message: `${updated.name} equipped!` });
+    } catch (err) {
+      console.error("Error in /api/inventory/equip:", err);
+      res.status(500).json({ error: "Internal server error" });
+    }
   });
 
   const httpServer = createServer(app);
