@@ -1,5 +1,54 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+
+interface RunStep {
+  index: number;
+  instruction: string;
+  expectedCommand: string;
+  hint: string;
+  successMessage: string;
+  output: string;
+  completed: boolean;
+  submittedCommand?: string;
+}
+
+interface Run {
+  id: string;
+  questId: string;
+  status: "in_progress" | "completed" | "failed";
+  currentStep: number;
+  steps: RunStep[];
+  startedAt: string;
+  completedAt?: string;
+}
+
+const runs = new Map<string, Run>();
+
+const QUEST_STEPS: Record<string, RunStep[]> = {
+  lesson: [
+    { index: 0, instruction: "Find out where you are. Type 'pwd' to print your current directory.", expectedCommand: "pwd", hint: "pwd stands for 'print working directory'", successMessage: "You found your location!", output: "/home/hunter", completed: false },
+    { index: 1, instruction: "List the contents of the current directory with 'ls'.", expectedCommand: "ls", hint: "ls stands for 'list'", successMessage: "You can see the files around you!", output: "quests  inventory  skills.sh  notes.txt", completed: false },
+    { index: 2, instruction: "Move into the quests directory with 'cd quests'.", expectedCommand: "cd quests", hint: "cd stands for 'change directory'", successMessage: "You entered the quests folder!", output: "", completed: false },
+    { index: 3, instruction: "Confirm your location with 'pwd'.", expectedCommand: "pwd", hint: "Use pwd to verify where you are", successMessage: "Step complete!", output: "/home/hunter/quests", completed: false },
+  ],
+  challenge: [
+    { index: 0, instruction: "A boss appears! Search for its weakness. Use 'grep error boss.log'.", expectedCommand: "grep error boss.log", hint: "grep searches for patterns in files", successMessage: "You found the weakness!", output: "[CRITICAL] error: shield down at sector 7", completed: false },
+    { index: 1, instruction: "Exploit the weakness! Make the attack script executable with 'chmod +x attack.sh'.", expectedCommand: "chmod +x attack.sh", hint: "chmod +x adds execute permission", successMessage: "Attack script ready!", output: "", completed: false },
+    { index: 2, instruction: "Finish the boss! Copy the loot with 'cp loot.txt inventory/'.", expectedCommand: "cp loot.txt inventory/", hint: "cp copies files to a destination", successMessage: "Boss defeated! Loot secured!", output: "", completed: false },
+  ],
+  terminal: [
+    { index: 0, instruction: "Warm up. Print your username with 'whoami'.", expectedCommand: "whoami", hint: "whoami shows the current user", successMessage: "Identity confirmed!", output: "hunter", completed: false },
+    { index: 1, instruction: "Create a training log with 'touch training.log'.", expectedCommand: "touch training.log", hint: "touch creates an empty file", successMessage: "Training log created!", output: "", completed: false },
+    { index: 2, instruction: "Record your progress. Type 'echo Level Up >> training.log'.", expectedCommand: "echo Level Up >> training.log", hint: "echo with >> appends to a file", successMessage: "Progress recorded!", output: "", completed: false },
+  ],
+  any: [
+    { index: 0, instruction: "Check in for the day. Type 'echo I am here'.", expectedCommand: "echo I am here", hint: "echo prints text to the terminal", successMessage: "Attendance logged!", output: "I am here", completed: false },
+  ],
+};
+
+function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+}
 
 interface Quest {
   id: string;
@@ -99,6 +148,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     res.json({ date: storedQuestsDate, quests: storedQuests });
+  });
+
+  app.post("/api/quests/:id/start", (req: Request, res: Response) => {
+    const questId = req.params.id as string;
+    const quest = storedQuests.find((q) => q.id === questId);
+
+    if (!quest) {
+      return res.status(404).json({ error: "Quest not found" });
+    }
+
+    const existingRun = Array.from(runs.values()).find(
+      (r) => r.questId === questId && r.status === "in_progress"
+    );
+    if (existingRun) {
+      return res.json(existingRun);
+    }
+
+    const templateSteps = QUEST_STEPS[quest.type] || QUEST_STEPS["any"];
+    const steps: RunStep[] = templateSteps.map((s) => ({ ...s, completed: false, submittedCommand: undefined }));
+
+    const run: Run = {
+      id: generateId(),
+      questId,
+      status: "in_progress",
+      currentStep: 0,
+      steps,
+      startedAt: new Date().toISOString(),
+    };
+
+    runs.set(run.id, run);
+    res.json(run);
+  });
+
+  app.post("/api/runs/:runId/submit", (req: Request, res: Response) => {
+    const runId = req.params.runId as string;
+    const { command } = req.body || {};
+
+    const run = runs.get(runId);
+    if (!run) {
+      return res.status(404).json({ error: "Run not found" });
+    }
+
+    if (run.status === "completed") {
+      return res.status(400).json({ error: "Run already completed", run });
+    }
+
+    if (!command || typeof command !== "string") {
+      return res.status(400).json({ error: "Missing 'command' in request body" });
+    }
+
+    const step = run.steps[run.currentStep];
+    if (!step) {
+      return res.status(400).json({ error: "No current step available" });
+    }
+
+    const trimmed = command.trim().toLowerCase();
+    const expected = step.expectedCommand.toLowerCase();
+    const correct = trimmed === expected;
+
+    step.submittedCommand = command.trim();
+
+    if (correct) {
+      step.completed = true;
+
+      if (run.currentStep < run.steps.length - 1) {
+        run.currentStep++;
+        return res.json({
+          correct: true,
+          output: step.output,
+          successMessage: step.successMessage,
+          completed: false,
+          currentStep: run.currentStep,
+          totalSteps: run.steps.length,
+          nextInstruction: run.steps[run.currentStep].instruction,
+          run,
+        });
+      } else {
+        run.status = "completed";
+        run.completedAt = new Date().toISOString();
+        return res.json({
+          correct: true,
+          output: step.output,
+          successMessage: step.successMessage,
+          completed: true,
+          currentStep: run.currentStep,
+          totalSteps: run.steps.length,
+          run,
+        });
+      }
+    } else {
+      return res.json({
+        correct: false,
+        hint: step.hint,
+        instruction: step.instruction,
+        currentStep: run.currentStep,
+        totalSteps: run.steps.length,
+        run,
+      });
+    }
   });
 
   const httpServer = createServer(app);
