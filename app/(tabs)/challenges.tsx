@@ -126,7 +126,7 @@ export default function BossRaids() {
   return (
     <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 34 : 20, paddingTop: insets.top + webTop }}
+        contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 90, paddingTop: insets.top + webTop }}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.pageHeader}>

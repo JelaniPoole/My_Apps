@@ -149,7 +149,7 @@ export default function HunterDashboard() {
     <View style={styles.container}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 34 : 20, paddingTop: insets.top + webTop }}
+        contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 90, paddingTop: insets.top + webTop }}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View entering={FadeInDown.duration(600)}>

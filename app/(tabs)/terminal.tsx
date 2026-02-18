@@ -21,7 +21,7 @@ export default function TrainingGround() {
         <Text style={styles.headerTitle}>Training Ground</Text>
         <Text style={styles.headerSubtitle}>Practice freely</Text>
       </View>
-      <View style={styles.terminalWrap}>
+      <View style={[styles.terminalWrap, { marginBottom: insets.bottom + 60 }]}>
         <TerminalView
           welcomeMessage={"hunter@system:~$ Welcome, Hunter.\nType 'help' for available commands.\n"}
           prompt="hunter@system:~$"
