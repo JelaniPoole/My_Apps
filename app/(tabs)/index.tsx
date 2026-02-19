@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Platform,
   Dimensions,
 } from "react-native";
+import { apiUrl } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -102,6 +103,19 @@ function DailyQuestCard({
 
 export default function HunterDashboard() {
   const insets = useSafeAreaInsets();
+  const [serverStatus, setServerStatus] = useState<string>("Checking server...");
+
+  useEffect(() => {
+    fetch(apiUrl("/api/status"))
+      .then(res => res.json())
+      .then(data => {
+        setServerStatus(JSON.stringify(data));
+      })
+      .catch(err => {
+        setServerStatus("Error: " + err.message);
+      });
+  }, []);
+
   const {
     xp,
     stats,
@@ -152,6 +166,10 @@ export default function HunterDashboard() {
         contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 90, paddingTop: insets.top + webTop }}
         showsVerticalScrollIndicator={false}
       >
+        <Text style={{ marginBottom: 10, color: Colors.textSecondary, marginHorizontal: 16 }}>
+          {serverStatus}
+        </Text>
+
         <Animated.View entering={FadeInDown.duration(600)}>
           <LinearGradient
             colors={[Colors.primary + "30", Colors.background]}
