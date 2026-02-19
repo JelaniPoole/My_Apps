@@ -101,18 +101,34 @@ function DailyQuestCard({
   );
 }
 
+type Player = {
+  id: string;
+  name: string;
+  level: number;
+  xp: number;
+  rank: string;
+  gold: number;
+  stats: {
+    str: number;
+    dex?: number;
+    agi?: number;
+    int: number;
+    vit: number;
+  };
+};
+
 export default function HunterDashboard() {
   const insets = useSafeAreaInsets();
-  const [serverStatus, setServerStatus] = useState<string>("Checking server...");
+  const [player, setPlayer] = useState<Player | null>(null);
 
   useEffect(() => {
-    fetch(apiUrl("/api/status"))
+    fetch(apiUrl("/api/me"))
       .then(res => res.json())
       .then(data => {
-        setServerStatus(JSON.stringify(data));
+        setPlayer(data);
       })
       .catch(err => {
-        setServerStatus("Error: " + err.message);
+        console.error("Failed to load player:", err);
       });
   }, []);
 
@@ -159,6 +175,29 @@ export default function HunterDashboard() {
 
   const webTop = Platform.OS === "web" ? 67 : 0;
 
+  const playerStats: Record<string, number> = player
+    ? {
+        STR: player.stats.str ?? 1,
+        INT: player.stats.int ?? 1,
+        AGI: player.stats.agi ?? player.stats.dex ?? 1,
+        VIT: player.stats.vit ?? 1,
+        DEF: stats.DEF ?? 1,
+      }
+    : stats;
+
+  const displayLevel = player?.level ?? level;
+  const displayXp = player?.xp ?? xp;
+  const displayRank = player?.rank ?? rank.rank;
+
+  if (!player) {
+    return (
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <Ionicons name="hourglass" size={32} color={Colors.primary} />
+        <Text style={{ color: Colors.textSecondary, marginTop: 12, fontSize: 16 }}>Loading Hunter Data...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -166,22 +205,18 @@ export default function HunterDashboard() {
         contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 90, paddingTop: insets.top + webTop }}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={{ marginBottom: 10, color: Colors.textSecondary, marginHorizontal: 16 }}>
-          {serverStatus}
-        </Text>
-
         <Animated.View entering={FadeInDown.duration(600)}>
           <LinearGradient
             colors={[Colors.primary + "30", Colors.background]}
             style={styles.headerGradient}
           >
             <View style={styles.rankBadge}>
-              <Text style={[styles.rankLetter, { color: rank.color }]}>{rank.rank}</Text>
+              <Text style={[styles.rankLetter, { color: rank.color }]}>{displayRank}</Text>
             </View>
 
             <View style={styles.headerInfo}>
-              <Text style={styles.rankTitle}>{rank.title}</Text>
-              <Text style={styles.levelText}>LV. {level}</Text>
+              <Text style={styles.rankTitle}>{player.name}</Text>
+              <Text style={styles.levelText}>LV. {displayLevel}</Text>
 
               <View style={styles.xpBarContainer}>
                 <View style={styles.xpBarBg}>
@@ -193,7 +228,7 @@ export default function HunterDashboard() {
                   />
                 </View>
                 <Text style={styles.xpBarText}>
-                  {xpIntoCurrentLevel} / {xpForNextLevel - (level - 1) * (level - 1) * 25} XP
+                  {displayXp} XP
                 </Text>
               </View>
             </View>
@@ -221,7 +256,7 @@ export default function HunterDashboard() {
           <View style={styles.quickStatDivider} />
           <View style={styles.quickStatItem}>
             <Ionicons name="star" size={20} color={Colors.primary} />
-            <Text style={styles.quickStatValue}>{xp}</Text>
+            <Text style={styles.quickStatValue}>{displayXp}</Text>
             <Text style={styles.quickStatLabel}>XP</Text>
           </View>
         </Animated.View>
@@ -232,7 +267,7 @@ export default function HunterDashboard() {
             <Text style={styles.sectionTitle}>Hunter Stats</Text>
           </View>
           <View style={styles.statsCard}>
-            {Object.entries(stats).map(([key, val]) => (
+            {Object.entries(playerStats).map(([key, val]) => (
               <StatBar key={key} type={key} value={val} />
             ))}
           </View>
