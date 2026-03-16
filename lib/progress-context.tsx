@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { apiUrl } from "@/lib/api";
 import { getDailyQuests, getRank, getNextRank } from "@/lib/linux-data";
 
 export interface Stats {
+  [key: string]: number;
   STR: number;
   INT: number;
   AGI: number;
@@ -70,6 +72,39 @@ const defaultProgress: ProgressData = {
   title: "Novice",
 };
 
+type ServerProgressPayload = Partial<ProgressData> & {
+  xp?: number;
+  stats?: Stats;
+};
+
+async function fetchServerProgress(): Promise<ServerProgressPayload | null> {
+  try {
+    const res = await fetch(apiUrl("/api/me"));
+    if (!res.ok) return null;
+    const data = (await res.json()) as ServerProgressPayload;
+    if (typeof data.xp !== "number" || typeof data.stats !== "object") return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+async function syncProgressToServer(progress: ProgressData) {
+  try {
+    await fetch(apiUrl("/api/me"), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        xp: progress.xp,
+        stats: progress.stats,
+        progress,
+      }),
+    });
+  } catch {
+    // Ignore sync failures; progress will remain in local cache.
+  }
+}
+
 function calculateLevel(xp: number): number {
   return Math.floor(Math.sqrt(xp / 25)) + 1;
 }
@@ -115,6 +150,42 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       console.error("Failed to load progress", e);
     }
+
+    // Try to merge with the server state (shared progress)
+    const server = await fetchServerProgress();
+    if (server) {
+      setProgress((prev) => {
+        const merged: ProgressData = {
+          ...prev,
+          xp: Math.max(prev.xp, server.xp ?? 0),
+          stats: {
+            STR: Math.max(prev.stats.STR, server.stats?.STR ?? 0),
+            INT: Math.max(prev.stats.INT, server.stats?.INT ?? 0),
+            AGI: Math.max(prev.stats.AGI, server.stats?.AGI ?? 0),
+            VIT: Math.max(prev.stats.VIT, server.stats?.VIT ?? 0),
+            DEF: Math.max(prev.stats.DEF, server.stats?.DEF ?? 0),
+          },
+          completedLessons: Array.from(new Set([...prev.completedLessons, ...(server.completedLessons ?? [])])),
+          completedChallenges: Array.from(new Set([...prev.completedChallenges, ...(server.completedChallenges ?? [])])),
+          currentStreak: Math.max(prev.currentStreak, server.currentStreak ?? 0),
+          lastActiveDate: server.lastActiveDate || prev.lastActiveDate,
+          terminalHistory: Array.from(new Set([...prev.terminalHistory, ...(server.terminalHistory ?? [])])),
+          dailyProgress: {
+            lessonsToday: Math.max(prev.dailyProgress.lessonsToday, server.dailyProgress?.lessonsToday ?? 0),
+            challengesToday: Math.max(prev.dailyProgress.challengesToday, server.dailyProgress?.challengesToday ?? 0),
+            commandsToday: Math.max(prev.dailyProgress.commandsToday, server.dailyProgress?.commandsToday ?? 0),
+            questsClaimed: Array.from(
+              new Set([...prev.dailyProgress.questsClaimed, ...(server.dailyProgress?.questsClaimed ?? [])]),
+            ),
+          },
+          totalPowerUps: Math.max(prev.totalPowerUps, server.totalPowerUps ?? 0),
+          title: server.title ?? prev.title,
+        };
+        saveProgress(merged);
+        return merged;
+      });
+    }
+
     setIsLoaded(true);
   }
 
@@ -144,6 +215,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
 
       const final = { ...updated, currentStreak: streak, lastActiveDate: today };
       saveProgress(final);
+      void syncProgressToServer(final);
       return final;
     });
   }
@@ -183,17 +255,15 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
   }
 
   function addTerminalCommand(cmd: string) {
-    setProgress((prev) => {
+    updateProgress((prev) => {
       const history = [...prev.terminalHistory, cmd].slice(-100);
       const today = new Date().toDateString();
-      const updated = {
+      return {
         ...prev,
         terminalHistory: history,
         lastActiveDate: today,
         dailyProgress: { ...prev.dailyProgress, commandsToday: prev.dailyProgress.commandsToday + 1 },
       };
-      saveProgress(updated);
-      return updated;
     });
   }
 

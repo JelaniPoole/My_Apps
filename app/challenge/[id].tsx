@@ -56,6 +56,7 @@ export default function ChallengeScreen() {
     );
   }
 
+  // TypeScript now knows challenge is defined after the null check
   const isAlreadyCompleted = completedChallenges.includes(challenge.id);
 
   function handleSubmit() {
@@ -68,16 +69,16 @@ export default function ChallengeScreen() {
     newLines.push({ id: generateId(), type: "prompt", text: `$ ${trimmed}` });
     setAttempts((a) => a + 1);
 
-    if (challenge.acceptedCommands.includes(trimmed)) {
-      if (challenge.output) {
-        newLines.push({ id: generateId(), type: "output", text: challenge.output });
+    if (challenge!.acceptedCommands.includes(trimmed)) {
+      if (challenge!.output) {
+        newLines.push({ id: generateId(), type: "output", text: challenge!.output });
       }
       newLines.push({ id: generateId(), type: "success", text: "Correct! Challenge solved!" });
       setSolved(true);
 
       if (!isAlreadyCompleted) {
-        addXp(challenge.xpReward);
-        completeChallenge(challenge.id);
+        addXp(challenge!.xpReward);
+        completeChallenge(challenge!.id);
       }
 
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -96,7 +97,7 @@ export default function ChallengeScreen() {
 
   function revealHint() {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setHintIndex((prev) => Math.min(prev + 1, challenge.hints.length - 1));
+    setHintIndex((prev) => Math.min(prev + 1, challenge!.hints.length - 1));
   }
 
   if (solved) {
@@ -130,9 +131,9 @@ export default function ChallengeScreen() {
   }
 
   const diffColor =
-    challenge.difficulty === "beginner"
+    challenge.difficulty === "E"
       ? Colors.success
-      : challenge.difficulty === "intermediate"
+      : challenge.difficulty === "D"
       ? Colors.warning
       : Colors.error;
 

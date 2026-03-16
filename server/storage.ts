@@ -2,6 +2,13 @@ import { type User, type InsertUser, users } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 
+function getDb() {
+  if (!db) {
+    throw new Error("Database is not initialized");
+  }
+  return db;
+}
+
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -10,17 +17,17 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
+    const [user] = await getDb().select().from(users).where(eq(users.id, id));
     return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+    const [user] = await getDb().select().from(users).where(eq(users.username, username));
     return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
+    const [user] = await getDb().insert(users).values(insertUser).returning();
     return user;
   }
 }

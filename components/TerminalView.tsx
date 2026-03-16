@@ -18,7 +18,11 @@ interface TerminalLine {
 }
 
 interface TerminalViewProps {
-  onCommand?: (cmd: string) => string | null;
+  /**
+   * Optional callback for tracking commands (e.g., XP/progress).
+   * The built-in command processor will still run and display output.
+   */
+  onCommand?: (cmd: string) => void;
   prompt?: string;
   initialLines?: TerminalLine[];
   autoFocus?: boolean;
@@ -257,18 +261,13 @@ export default function TerminalView({
     const newLines: TerminalLine[] = [...lines];
     newLines.push({ id: generateId(), type: "input", text: `${getPrompt()} ${trimmed}` });
 
+    const result = processCommand(trimmed);
+    if (result.output) {
+      newLines.push({ id: generateId(), type: result.type, text: result.output });
+    }
+
     if (onCommand) {
-      const result = onCommand(trimmed);
-      if (result !== null) {
-        if (result) {
-          newLines.push({ id: generateId(), type: "output", text: result });
-        }
-      }
-    } else {
-      const result = processCommand(trimmed);
-      if (result.output) {
-        newLines.push({ id: generateId(), type: result.type, text: result.output });
-      }
+      onCommand(trimmed);
     }
 
     setLines(newLines);

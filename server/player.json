@@ -1,0 +1,49 @@
+{
+  "id": "demo",
+  "name": "Hunter",
+  "level": 1,
+  "xp": 0,
+  "rank": "E",
+  "title": "E-Rank Hunter",
+  "stats": {
+    "STR": 1,
+    "INT": 1,
+    "AGI": 1,
+    "VIT": 1,
+    "DEF": 1
+  },
+  "progress": {
+    "xp": 0,
+    "stats": {
+      "STR": 1,
+      "INT": 1,
+      "AGI": 1,
+      "VIT": 1,
+      "DEF": 1
+    },
+    "completedLessons": [],
+    "completedChallenges": [],
+    "currentStreak": 0,
+    "lastActiveDate": "Sun Mar 15 2026",
+    "terminalHistory": [
+      "help",
+      "ls",
+      "cd desktop",
+      "cd Desktop",
+      "ls",
+      "touch stuff",
+      "ls",
+      "help",
+      "mkdir test",
+      "ls"
+    ],
+    "dailyProgress": {
+      "lessonsToday": 0,
+      "challengesToday": 0,
+      "commandsToday": 10,
+      "questsClaimed": []
+    },
+    "totalPowerUps": 0,
+    "title": "E-Rank Hunter"
+  }
+}

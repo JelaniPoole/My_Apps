@@ -21,14 +21,13 @@ export default function TrainingGround() {
         <Text style={styles.headerTitle}>Training Ground</Text>
         <Text style={styles.headerSubtitle}>Practice freely</Text>
       </View>
-      <View style={[styles.terminalWrap, { marginBottom: insets.bottom + 60 }]}>
+      <View style={[styles.terminalWrap, { marginBottom: Platform.OS === "web" ? 80 : insets.bottom + 60 }]}>
         <TerminalView
           welcomeMessage={"hunter@system:~$ Welcome, Hunter.\nType 'help' for available commands.\n"}
           prompt="hunter@system:~$"
           onCommand={(cmd) => {
-            addTerminalCommand(cmd);
-            return null;
-          }}
+          addTerminalCommand(cmd);
+        }}
         />
       </View>
     </KeyboardAvoidingView>

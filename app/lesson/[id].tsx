@@ -57,6 +57,7 @@ export default function LessonScreen() {
     );
   }
 
+  // TypeScript now knows lesson is defined after the null check
   const step = lesson.steps[currentStep];
   const isAlreadyCompleted = completedLessons.includes(lesson.id);
 
@@ -94,7 +95,7 @@ export default function LessonScreen() {
   function handleNext() {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    if (currentStep < lesson.steps.length - 1) {
+    if (currentStep < lesson!.steps.length - 1) {
       setCurrentStep((prev) => prev + 1);
       setStepCompleted(false);
       setShowHint(false);
@@ -103,8 +104,8 @@ export default function LessonScreen() {
       setTimeout(() => inputRef.current?.focus(), 100);
     } else {
       if (!isAlreadyCompleted) {
-        addXp(lesson.xpReward);
-        completeLesson(lesson.id);
+        addXp(lesson!.xpReward);
+        completeLesson(lesson!.id);
       }
       setLessonDone(true);
     }

@@ -175,19 +175,14 @@ export default function HunterDashboard() {
 
   const webTop = Platform.OS === "web" ? 67 : 0;
 
-  const playerStats: Record<string, number> = player
-    ? {
-        STR: player.stats.str ?? 1,
-        INT: player.stats.int ?? 1,
-        AGI: player.stats.agi ?? player.stats.dex ?? 1,
-        VIT: player.stats.vit ?? 1,
-        DEF: stats.DEF ?? 1,
-      }
-    : stats;
+  // Use local progress stats so they stay in sync as the user earns XP and power-ups.
+  const playerStats: Record<string, number> = stats;
 
-  const displayLevel = player?.level ?? level;
-  const displayXp = player?.xp ?? xp;
-  const displayRank = player?.rank ?? rank.rank;
+  // Use local progress values for level, XP, and rank to keep the UI consistent.
+  const displayLevel = level;
+  const displayXp = xp;
+  const displayRank = rank.rank;
+  const displayName = player?.name ?? "Hunter";
 
   if (!player) {
     return (
@@ -215,7 +210,7 @@ export default function HunterDashboard() {
             </View>
 
             <View style={styles.headerInfo}>
-              <Text style={styles.rankTitle}>{player.name}</Text>
+              <Text style={styles.rankTitle}>{displayName}</Text>
               <Text style={styles.levelText}>LV. {displayLevel}</Text>
 
               <View style={styles.xpBarContainer}>

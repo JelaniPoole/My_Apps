@@ -29,6 +29,7 @@ export const players = pgTable("players", {
   xp: integer("xp").notNull().default(0),
   stats: jsonb("stats").notNull().default({ STR: 1, INT: 1, AGI: 1, VIT: 1, DEF: 1 }),
   title: text("title").notNull().default("E-Rank Hunter"),
+  progress: jsonb("progress").notNull().default({}),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

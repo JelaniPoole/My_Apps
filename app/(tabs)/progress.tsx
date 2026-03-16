@@ -144,7 +144,7 @@ export default function StatsScreen() {
             <View style={styles.insightCard}>
               <Ionicons name="bulb" size={18} color={Colors.xpGold} />
               <Text style={styles.insightText}>
-                You've mastered {uniqueCommands} unique commands. {uniqueCommands >= 15 ? "Impressive skill set!" : "Keep exploring!"}
+                  You&apos;ve mastered {uniqueCommands} unique commands. {uniqueCommands >= 15 ? "Impressive skill set!" : "Keep exploring!"}
               </Text>
             </View>
           )}
