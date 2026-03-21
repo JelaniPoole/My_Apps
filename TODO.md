@@ -1,38 +1,14 @@
-# Linux Terminal Quest - Fix Errors & Complete TODO
+# App Fix Progress
 
-## Current Issues from `npx expo start`
-✅ Metro bundler starts successfully
-⚠️  Icon warnings: "cpu", "package" invalid ionicons → fix icons in lib/linux-data.ts
-❌ Player fetch error: localhost:5000 not accessible in Expo Go → start backend server
+## [x] 1. Populate lib/linux-data.ts with full lessons (20), challenges (50), commands (80+)
+## [ ] 2. Align API base URLs (lib/api.ts)
+## [ ] 3. Start server: cd server && npm install && node index.ts (port 5000)
+## [ ] 4. Clear cache: npx expo start --clear
+## [ ] 5. Test tabs:
+   - [ ] Hunter tab loads without stuck loading
+   - [ ] Dungeons shows lessons cards
+   - [ ] Raids shows boss cards  
+   - [ ] Stats shows full data/grid
+## [ ] 6. Complete a dungeon/raid -> verify XP/stats update
+## [ ] 7. attempt_completion
 
-## Approved Plan Steps (Updated Tracker)
-✅ 1. Create detailed TODO.md with steps ✓
-
-✅ **Step 2: Fix invalid icons in lib/linux-data.ts**
-- lesson id="10" icon: "cpu" → "cpu-outline"
-- challenge id="c50" icon: "package" → "cube"
-
-✅ **Step 3: Start backend server**
-- Run `npx tsx server/index.ts` (Express server on :5000)
-
-**Step 4: Complete data merge**
-- Append full NEW_LESSONS/NEW_CHALLENGES from lib/new-lessons-challenges.ts to lib/linux-data.ts arrays
-
-**Step 5: Extend TerminalView.tsx processCommand()**
-- Add handlers for new commands (pipes, apt, git, etc.)
-
-**Step 6: Handle player fetch fallback**
-- Update app/(tabs)/index.tsx useEffect to use local progress if fetch fails
-
-**Step 7: Balance XP/stats**
-- Review rewards in lib/linux-data.ts
-
-**Step 8: Test & Complete**
-- Reload Metro (r), check no errors/warns
-- Test tabs, terminal, QR scan
-- Mark complete
-
-## Progress
-Data expanded! Backend ready. Fixing warnings/errors for clean production run.
-
-**Next**: Fix icons (Step 2)

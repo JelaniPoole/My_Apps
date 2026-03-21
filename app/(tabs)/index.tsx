@@ -122,14 +122,16 @@ export default function HunterDashboard() {
   const [player, setPlayer] = useState<Player | null>(null);
 
   useEffect(() => {
-    fetch(apiUrl("/api/me"))
-      .then(res => res.json())
-      .then(data => {
-        setPlayer(data);
-      })
-      .catch(err => {
-        console.error("Failed to load player:", err);
-      });
+    if (Platform.OS === 'web') {
+      fetch(apiUrl("/api/me"))
+        .then(res => res.json())
+        .then(data => {
+          setPlayer(data);
+        })
+        .catch(err => {
+          console.error("Failed to load player:", err);
+        });
+    }
   }, []);
 
   const {
