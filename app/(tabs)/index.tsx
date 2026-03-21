@@ -101,39 +101,10 @@ function DailyQuestCard({
   );
 }
 
-type Player = {
-  id: string;
-  name: string;
-  level: number;
-  xp: number;
-  rank: string;
-  gold: number;
-  stats: {
-    str: number;
-    dex?: number;
-    agi?: number;
-    int: number;
-    vit: number;
-  };
-};
+
 
 export default function HunterDashboard() {
   const insets = useSafeAreaInsets();
-  const [player, setPlayer] = useState<Player | null>(null);
-
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      fetch(apiUrl("/api/me"))
-        .then(res => res.json())
-        .then(data => {
-          setPlayer(data);
-        })
-        .catch(err => {
-          console.error("Failed to load player:", err);
-        });
-    }
-  }, []);
-
   const {
     xp,
     stats,
@@ -148,7 +119,7 @@ export default function HunterDashboard() {
     dailyProgress,
     addXp,
     claimDailyQuest,
-
+    isLoaded,
   } = useProgress();
 
   const today = new Date().toDateString();
@@ -183,11 +154,11 @@ export default function HunterDashboard() {
   const displayLevel = level;
   const displayXp = xp;
   const displayRank = rank.rank;
-  const displayName = player?.name ?? "Hunter";
+  const displayName = "Hunter";
 
-  if (!player) {
+  if (!isLoaded) {
     return (
-      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}> 
         <Ionicons name="hourglass" size={32} color={Colors.primary} />
         <Text style={{ color: Colors.textSecondary, marginTop: 12, fontSize: 16 }}>Loading Hunter Data...</Text>
       </View>
