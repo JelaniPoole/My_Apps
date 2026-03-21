@@ -12,12 +12,12 @@ import { apiUrl } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import Colors from "@/constants/colors";
 import { useProgress } from "@/lib/progress-context";
 import { getDailyQuests } from "@/lib/linux-data";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
 
 const STAT_META: Record<string, { label: string; icon: string; color: string }> = {
   STR: { label: "STR", icon: "fitness", color: Colors.statSTR },
@@ -146,8 +146,7 @@ export default function HunterDashboard() {
     dailyProgress,
     addXp,
     claimDailyQuest,
-    xpIntoCurrentLevel,
-    xpForNextLevel,
+
   } = useProgress();
 
   const today = new Date().toDateString();
