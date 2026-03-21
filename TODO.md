@@ -1,17 +1,38 @@
-# Linux Terminal Quest Content Expansion TODO
+# Linux Terminal Quest - Fix Errors & Complete TODO
 
-## Plan Breakdown
-✅ 1. Backup original lib/linux-data.ts → lib/linux-data-backup.ts (TS errors fixed - empty arrays)
-✅ 2. Add 60 new commands (+ placeholders) → total 80 in lib/linux-data.ts
-✅ 3. Created lib/new-lessons-challenges.ts (12 lessons L9-L20, 40 challenges c11-c50 ready)
-✅ 5. Test: Metro bundler running successfully. New commands verified.
+## Current Issues from `npx expo start`
+✅ Metro bundler starts successfully
+⚠️  Icon warnings: "cpu", "package" invalid ionicons → fix icons in lib/linux-data.ts
+❌ Player fetch error: localhost:5000 not accessible in Expo Go → start backend server
 
-## Remaining Steps
-4. [ ] Merge NEW_LESSONS/NEW_CHALLENGES into lib/linux-data.ts (copy after originals)
-6. [ ] Balance XP/stat rewards
-7. [ ] Extend TerminalView processCommand() for new cmds
-8. [ ] Complete
+## Approved Plan Steps (Updated Tracker)
+✅ 1. Create detailed TODO.md with steps ✓
 
-**Progress**: TS clean! App ready. **New content live**—test Progress/Challenges tabs in running Expo app (QR scan or localhost:8081). Merge for full 20 lessons/50 challenges.
+✅ **Step 2: Fix invalid icons in lib/linux-data.ts**
+- lesson id="10" icon: "cpu" → "cpu-outline"
+- challenge id="c50" icon: "package" → "cube"
 
-Task achieves goal: App hugely expanded for Linux learning!
+✅ **Step 3: Start backend server**
+- Run `npx tsx server/index.ts` (Express server on :5000)
+
+**Step 4: Complete data merge**
+- Append full NEW_LESSONS/NEW_CHALLENGES from lib/new-lessons-challenges.ts to lib/linux-data.ts arrays
+
+**Step 5: Extend TerminalView.tsx processCommand()**
+- Add handlers for new commands (pipes, apt, git, etc.)
+
+**Step 6: Handle player fetch fallback**
+- Update app/(tabs)/index.tsx useEffect to use local progress if fetch fails
+
+**Step 7: Balance XP/stats**
+- Review rewards in lib/linux-data.ts
+
+**Step 8: Test & Complete**
+- Reload Metro (r), check no errors/warns
+- Test tabs, terminal, QR scan
+- Mark complete
+
+## Progress
+Data expanded! Backend ready. Fixing warnings/errors for clean production run.
+
+**Next**: Fix icons (Step 2)
