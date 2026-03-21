@@ -43,6 +43,14 @@ export interface Challenge {
   bossName: string;
 }
 
+export interface CategoryRoadmap {
+  name: string;
+  icon: string;
+  lessons: string[];
+  challenges: string[];
+  statType: "STR" | "INT" | "AGI" | "VIT" | "DEF";
+}
+
 export interface DailyQuest {
   id: string;
   title: string;
@@ -97,7 +105,7 @@ export function getDailyQuests(dateStr: string): DailyQuest[] {
   ];
 }
 
-// Full 85 Linux commands
+// 85 Linux Commands (unchanged)
 export const commands: Command[] = [
   { name: "pwd", syntax: "pwd", description: "Print working directory", examples: ["pwd"], category: "Navigation", statType: "AGI" },
   { name: "ls", syntax: "ls [options] [path]", description: "List directory contents", examples: ["ls", "ls -la", "ls /home"], category: "Navigation", statType: "AGI" },
@@ -172,12 +180,11 @@ export const commands: Command[] = [
   { name: "neofetch", syntax: "neofetch", description: "System information", examples: ["neofetch"], category: "System", statType: "VIT" },
 ];
 
-// 20 Full Lessons (L1 basics to L20 advanced)
 export const lessons: Lesson[] = [
   {
     id: "1",
     title: "First Steps",
-    description: "Learn basic navigation",
+    description: "Learn basic navigation - where am I? What's around me?",
     icon: "location",
     category: "Navigation",
     xpReward: 50,
@@ -185,110 +192,197 @@ export const lessons: Lesson[] = [
     difficulty: "E",
     dungeonName: "Tutorial Caves",
     steps: [
-      { instruction: "Show current directory", expectedCommand: "pwd", hint: "Print working directory", successMessage: "Location revealed!", output: "/home/hunter" },
-      { instruction: "List files", expectedCommand: "ls", hint: "List directory contents", successMessage: "Enemies spotted!", output: "sword shield potion" },
-      { instruction: "Go home", expectedCommand: "cd ~", hint: "cd to home (~)", successMessage: "Safe camp reached!", output: "" },
+      { instruction: "Check your location in the dungeon", expectedCommand: "pwd", hint: "pwd = Print Working Directory", successMessage: "🗺️ Location revealed: /home/hunter", output: "/home/hunter" },
+      { instruction: "Scan for items (sword, shield, potions)", expectedCommand: "ls", hint: "ls = List directory contents", successMessage: "⚔️ Gear visible: sword shield potion", output: "sword shield potion\nREADME.md" },
+      { instruction: "Return to base camp safely", expectedCommand: "cd ~", hint: "~ = home directory shortcut", successMessage: "🏕️ Safe at camp!", output: "" },
     ],
   },
   {
-    id: "2",
+    id: "2", 
     title: "File Forge",
-    description: "Create your first files",
-    icon: "document",
+    description: "Learn to create files & folders - craft your hunter gear",
+    icon: "hammer",
     category: "Files",
     xpReward: 60,
     statReward: { type: "STR", amount: 2 },
     difficulty: "E",
     dungeonName: "Forge Depths",
     steps: [
-      { instruction: "Create quest log", expectedCommand: "touch quest.log", hint: "touch creates empty file", successMessage: "Log created!", output: "" },
-      { instruction: "Create map dir", expectedCommand: "mkdir maps", hint: "mkdir new directory", successMessage: "Map room unlocked!", output: "" },
-      { instruction: "List new files", expectedCommand: "ls", hint: "ls shows contents", successMessage: "Gear acquired!", output: "quest.log maps" },
+      { instruction: "Forge quest log", expectedCommand: "touch quest.log", hint: "touch = create empty file", successMessage: "📝 Quest log created!", output: "" },
+      { instruction: "Build storage room", expectedCommand: "mkdir maps", hint: "mkdir = make directory", successMessage: "📦 Storage ready!", output: "" },
+      { instruction: "Verify your crafting", expectedCommand: "ls", hint: "ls to check results", successMessage: "✅ Gear ready: quest.log maps", output: "quest.log maps" },
     ],
   },
-  // L3-L8 similar basics...
   {
-    id: "9",
+    id: "3",
+    title: "File Operations Mastery",
+    description: "Copy, move, delete - manage your inventory like a pro",
+    icon: "shuffle",
+    category: "Files",
+    xpReward: 70,
+    statReward: { type: "STR", amount: 3 },
+    difficulty: "D",
+    dungeonName: "Inventory Vault", 
+    steps: [
+      { instruction: "Backup your sword", expectedCommand: "cp sword sword.backup", hint: "cp source destination", successMessage: "🗡️ Backup complete!", output: "" },
+      { instruction: "Rename to iron-sword", expectedCommand: "mv sword.backup iron-sword", hint: "mv = move/rename", successMessage: "🔨 Upgraded!", output: "" },
+      { instruction: "Clean up empty pots", expectedCommand: "rm potion", hint: "rm to delete files", successMessage: "🧹 Cleaned!", output: "" },
+    ],
+  },
+  {
+    id: "4",
+    title: "Text Inspection Basics",
+    description: "Read files, count lines - analyze scrolls & logs",
+    icon: "document-text",
+    category: "Viewing",
+    xpReward: 65,
+    statReward: { type: "INT", amount: 2 },
+    difficulty: "D",
+    dungeonName: "Library Ruins",
+    steps: [
+      { instruction: "Read quest log", expectedCommand: "cat quest.log", hint: "cat = concatenate/show file", successMessage: "📖 Quest details revealed!", output: "Kill 5 goblins\nFind lost relic" },
+      { instruction: "Check first 3 lines of map", expectedCommand: "head -3 maps/world.txt", hint: "head shows beginning", successMessage: "🗺️ Map preview!", output: "Forest Entrance\nGoblin Camp\n..." },
+      { instruction: "Count lines in enemy log", expectedCommand: "wc -l enemies.txt", hint: "wc = word/line count", successMessage: "📊 12 enemies logged!", output: "12 enemies.txt" },
+    ],
+  },
+  {
+    id: "5",
+    title: "Search & Filter Power",
+    description: "grep + pipes - hunt specific enemies & items",
+    icon: "search",
+    category: "Text",
+    xpReward: 80,
+    statReward: { type: "INT", amount: 3 },
+    difficulty: "D",
+    dungeonName: "Enemy Archives",
+    steps: [
+      { instruction: "Find goblin mentions", expectedCommand: "grep goblin enemies.txt", hint: "grep = search pattern", successMessage: "👹 Goblins located!", output: "goblin x3\ngoblin shaman" },
+      { instruction: "Count only orcs", expectedCommand: "grep orc enemies.txt | wc -l", hint: "'|' = pipe output", successMessage: "💪 4 orcs!", output: "4" },
+    ],
+  },
+  {
+    id: "6",
     title: "Pipe Power Unleashed",
-    description: "Master pipes |, redirects > >> <, and tee",
+    description: "Master pipes, redirects, tee - chain commands like a hunter",
     icon: "git-merge",
     category: "Pipes",
     xpReward: 100,
-    statReward: { type: "INT", amount: 6 },
+    statReward: { type: "INT", amount: 4 },
     difficulty: "C",
     dungeonName: "Pipeline Labyrinth",
     steps: [
-      { instruction: "Filter .txt files", expectedCommand: "ls -1 | grep .txt", hint: "'|' pipes output", successMessage: "txt files filtered!", output: "notes.txt\ndata.txt" },
-      { instruction: "Save to file", expectedCommand: "ls | sort > files.txt", hint: "'>' overwrites file", successMessage: "Output saved!", output: "" },
-      { instruction: "Append", expectedCommand: "echo new >> files.txt", hint: "'>>' appends", successMessage: "Appended!", output: "" },
-      { instruction: "Tee to both", expectedCommand: "ls | tee listing.txt", hint: "tee to file+screen", successMessage: "Labyrinth conquered!", output: "Desktop Documents ..." },
+      { instruction: "Filter txt files only", expectedCommand: "ls -1 | grep .txt", hint: "'|' pipes ls to grep", successMessage: "📄 Txt files isolated!", output: "quest.log\nenemies.txt" },
+      { instruction: "Save sorted list", expectedCommand: "ls | sort > inventory.txt", hint: "'>' redirects to file", successMessage: "📝 Saved!", output: "" },
+      { instruction: "Append timestamp", expectedCommand: "echo Updated >> inventory.txt", hint: "'>>' appends", successMessage: "⏰ Timestamped!", output: "" },
+      { instruction: "Tee to both screen/file", expectedCommand: "ls | tee backup.txt", hint: "tee shows AND saves", successMessage: "✅ Dual output!", output: "sword shield ..." },
     ],
   },
   {
+    id: "7",
+    title: "Permissions & Defense", 
+    description: "chmod, whoami - secure your camp",
+    icon: "shield",
+    category: "Permissions",
+    xpReward: 90,
+    statReward: { type: "DEF", amount: 4 },
+    difficulty: "C",
+    dungeonName: "Security Crypt",
+    steps: [
+      { instruction: "Check your identity", expectedCommand: "whoami", hint: "whoami shows current user", successMessage: "🆔 Hunter confirmed!", output: "hunter" },
+      { instruction: "Make script executable", expectedCommand: "chmod +x hunt.sh", hint: "+x = executable", successMessage: "⚙️ Ready to run!", output: "" },
+    ],
+  },
+  {
+    id: "8",
+    title: "Process Hunter",
+    description: "ps, kill, top - hunt rogue processes",
+    icon: "activity",
+    category: "Processes",
+    xpReward: 110,
+    statReward: { type: "VIT", amount: 5 },
+    difficulty: "C",
+    dungeonName: "Process Dungeon",
+    steps: [
+      { instruction: "List all processes", expectedCommand: "ps aux", hint: "ps aux = all processes detailed", successMessage: "⚙️ Processes revealed!", output: "USER PID %CPU..." },
+      { instruction: "Kill PID 1234", expectedCommand: "kill 1234", hint: "kill PID terminates process", successMessage: "💀 Process eliminated!", output: "" },
+    ],
+  },
+  {
+    id: "9",
+    title: "Disk & Memory Scout",
+    description: "df du free - analyze system resources",
+    icon: "hard-drive",
+    category: "System",
+    xpReward: 95,
+    statReward: { type: "VIT", amount: 4 },
+    difficulty: "C",
+    dungeonName: "Resource Vault",
+    steps: [
+      { instruction: "Check disk usage", expectedCommand: "df -h", hint: "-h = human readable", successMessage: "💾 75% disk used!", output: "Filesystem Size Used..." },
+      { instruction: "Folder sizes", expectedCommand: "du -sh *", hint: "du -sh = summary sizes", successMessage: "📊 maps: 2.1M", output: "1.2M ./maps" },
+    ],
+  },
+  {
+    id: "10",
+    title: "Git Hunter Academy",
+    description: "Version control basics - track your quests",
+    icon: "logo-github",
+    category: "Git",
+    xpReward: 130,
+    statReward: { type: "INT", amount: 6 },
+    difficulty: "B",
+    dungeonName: "Repository Ruins",
+    steps: [
+      { instruction: "Check git status", expectedCommand: "git status", hint: "Shows changes/branch", successMessage: "📂 2 files modified", output: "On branch main\nmodified: quest.log" },
+      { instruction: "Quick log view", expectedCommand: "git log --oneline", hint: "--oneline = compact history", successMessage: "📜 Commit history!", output: "abc1234 Quest update" },
+    ],
+  },
+  // L11-19: Packages (apt), Network (ping/curl), Editors (nano/vim), Advanced Text (sed/awk), Services (systemctl), Monitoring (htop), Containers (docker), Final Boss Prep
+  {
     id: "20",
     title: "Master Hacker Toolkit",
-    description: "Advanced find, xargs, disk analysis",
+    description: "find xargs du mastery - ultimate Linux hunter",
     icon: "construct",
     category: "Advanced",
     xpReward: 250,
     statReward: { type: "AGI", amount: 18 },
     difficulty: "A",
-    dungeonName: "Binary Vault",
+    dungeonName: "Binary Citadel",
     steps: [
-      { instruction: "Find Python files recursively", expectedCommand: "find . -name '*.py'", hint: "find recursive search", successMessage: "Python files located!", output: "./scripts/app.py\n./lib/utils.py" },
-      { instruction: "Delete with xargs", expectedCommand: "find . -name '*.tmp' | xargs rm", hint: "xargs executes on piped input", successMessage: "Temp files purged!", output: "" },
-      { instruction: "Disk usage", expectedCommand: "du -sh /home/*", hint: "'-sh' human summary", successMessage: "Vault cleared!", output: "1.2G /home/user\n500M /home/shared" },
+      { instruction: "Hunt Python scripts recursively", expectedCommand: "find . -name '*.py'", hint: "find . recursive from current", successMessage: "🐍 Python files found!", output: "./lib/utils.py\n./scripts/bot.py" },
+      { instruction: "Delete temp files smart", expectedCommand: "find . -name '*.tmp' | xargs rm", hint: "xargs runs rm on each line", successMessage: "🧹 Temps purged!", output: "" },
+      { instruction: "Analyze home disk usage", expectedCommand: "du -sh /home/*", hint: "-sh = human summary", successMessage: "📊 Resource map complete!", output: "1.2G /home/hunter\n500M /home/shared" },
     ],
   },
-  // Add L3-8, L10-19 similar pattern (total 20)
-  // For brevity, 4 shown; in real: full 20 with progressive difficulty
 ];
 
-// 50 Full Challenges
 export const challenges: Challenge[] = [
-  {
-    id: "c1",
-    title: "Directory Demon",
-    description: "List detailed files",
-    icon: "list",
-    xpReward: 40,
-    statReward: { type: "AGI", amount: 2 },
-    difficulty: "E",
-    task: "Show all files with details: ls -la",
-    hints: ["ls -l = long format", "-a = hidden files"],
-    acceptedCommands: ["ls -la", "ls -l -a"],
-    output: "total 48\ndrwxr-xr-x 2 hunter hunter 4096 Oct 10 10:00 .\ndrwxr-xr-x 3 root root 4096 Oct 10 09:00 ..",
-    bossName: "Dir Demon",
-  },
-  {
-    id: "c11",
-    title: "First Pipe Strike",
-    description: "ls through grep",
-    icon: "git-merge",
-    xpReward: 55,
-    statReward: { type: "INT", amount: 4 },
-    difficulty: "D",
-    task: "Show only directories: ls -la | grep ^d",
-    hints: ["ls -la shows details", "^d matches dir permissions"],
-    acceptedCommands: ["ls -la | grep ^d", "ls -l | grep '^d'"],
-    output: "drwxr-xr-x 2 user user ...",
-    bossName: "Filter Fiend",
-  },
-  {
-    id: "c50",
-    title: "System Overlord",
-    description: "Full maintenance sequence",
-    icon: "settings",
-    xpReward: 300,
-    statReward: { type: "VIT", amount: 25 },
-    difficulty: "A",
-    task: "apt update && apt upgrade -y && apt autoremove",
-    hints: ["&& chains success", "Full sys maintenance"],
-    acceptedCommands: ["apt update && apt upgrade -y && apt autoremove"],
-    output: "System optimized!",
-    bossName: "Admin Emperor",
-  },
-  // Add c2-c49 similar (total 50 bosses)
+  // Navigation E Rank
+  { id: "c1", title: "Directory Demon", description: "Detailed file listing", icon: "list", xpReward: 40, statReward: { type: "AGI", amount: 2 }, difficulty: "E", task: "ls -la (detailed listing)", hints: ["-l long format", "-a all files"], acceptedCommands: ["ls -la", "ls -l -a"], output: "total 48\ndrwx...", bossName: "Dir Demon" },
+  { id: "c2", title: "Path Master", description: "Advanced navigation", icon: "location", xpReward: 45, statReward: { type: "AGI", amount: 2 }, difficulty: "E", task: "find . -name '*.txt'", hints: ["find searches recursively"], acceptedCommands: ["find . -name '*.txt'"], output: "./quest.log\n./notes.txt", bossName: "Path Phantom" },
+  
+  // Files D Rank  
+  { id: "c3", title: "Copy Cat", description: "Smart copying", icon: "copy", xpReward: 50, statReward: { type: "STR", amount: 2 }, difficulty: "D", task: "cp -r src backup/", hints: ["-r recursive dirs"], acceptedCommands: ["cp -r src backup"], output: "Files copied!", bossName: "Copy Curse" },
+  { id: "c4", title: "Link Lord", description: "Symbolic links", icon: "link", xpReward: 55, statReward: { type: "STR", amount: 3 }, difficulty: "D", task: "ln -s original shortcut", hints: ["-s = symbolic link"], acceptedCommands: ["ln -s original shortcut"], output: "Link created!", bossName: "Link Lich" },
+  
+  // Pipes/Text C Rank
+  { id: "c5", title: "Pipe Fiend", description: "grep + wc chain", icon: "git-merge", xpReward: 60, statReward: { type: "INT", amount: 3 }, difficulty: "C", task: "ls | grep txt | wc -l", hints: ["Count txt files via pipe"], acceptedCommands: ["ls | grep txt | wc -l"], output: "3", bossName: "Pipe Phantom" },
+  { id: "c6", title: "Sort Sorcerer", description: "Multi-sort mastery", icon: "sort", xpReward: 65, statReward: { type: "INT", amount: 3 }, difficulty: "C", task: "sort -r names.txt | head -5", hints: ["-r reverse, head limits"], acceptedCommands: ["sort -r names.txt | head -5"], output: "Zoe\nYara\n...", bossName: "Sort Shade" },
+  
+  // Continue pattern to C50 System Overlord...
+  { id: "c50", title: "System Overlord", description: "Full sys maintenance", icon: "settings", xpReward: 300, statReward: { type: "VIT", amount: 25 }, difficulty: "A", task: "apt update && apt upgrade -y && apt autoremove", hints: ["&& chains commands", "Full Ubuntu/Debian update"], acceptedCommands: ["apt update && apt upgrade -y && apt autoremove"], output: "System optimized! All packages updated.", bossName: "Admin Emperor" },
+];
+
+export const roadmapCategories: CategoryRoadmap[] = [
+  { name: "Navigation", icon: "location", lessons: ["1"], challenges: ["c1", "c2"], statType: "AGI" },
+  { name: "Files", icon: "document", lessons: ["2", "3"], challenges: ["c3", "c4"], statType: "STR" },
+  { name: "Viewing", icon: "eye", lessons: ["4"], challenges: ["c7", "c8"], statType: "INT" },
+  { name: "Pipes & Text", icon: "git-merge", lessons: ["5", "6"], challenges: ["c5", "c6"], statType: "INT" },
+  { name: "Permissions", icon: "shield", lessons: ["7"], challenges: ["c9"], statType: "DEF" },
+  { name: "Processes", icon: "activity", lessons: ["8"], challenges: ["c10", "c11"], statType: "VIT" },
+  { name: "System", icon: "server", lessons: ["9"], challenges: ["c12"], statType: "VIT" },
+  { name: "Git", icon: "logo-github", lessons: ["10"], challenges: ["c20"], statType: "INT" },
+  { name: "Advanced", icon: "construct", lessons: ["20"], challenges: ["c50"], statType: "AGI" },
 ];
 
 export function getCommandsByCategory(): Record<string, Command[]> {
@@ -298,5 +392,19 @@ export function getCommandsByCategory(): Record<string, Command[]> {
     grouped[cmd.category].push(cmd);
   });
   return grouped;
+}
+
+export function getRoadmapProgress(completedLessons: string[], completedChallenges: string[]): Record<string, {completed: number, total: number, pct: number}> {
+  const progress: Record<string, {completed: number, total: number, pct: number}> = {};
+  
+  roadmapCategories.forEach((cat) => {
+    const lessonComplete = cat.lessons.filter(id => completedLessons.includes(id)).length;
+    const challengeComplete = cat.challenges.filter(id => completedChallenges.includes(id)).length;
+    const total = cat.lessons.length + cat.challenges.length;
+    const completed = lessonComplete + challengeComplete;
+    progress[cat.name] = { completed, total, pct: total > 0 ? (completed / total) : 0 };
+  });
+  
+  return progress;
 }
 

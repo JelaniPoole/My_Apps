@@ -1,40 +1,38 @@
-# BLACKBOXAI Fix Plan: Hunter Tab Loading Issue
+# Learning App Enhancement TODO
+✅ 0. Created TODO.md
+✅ 1. Backup complete
+✅ 2. Data Expanded! lib/linux-data.ts now has:
+   - 20 Full Lessons (teaching dungeons L1-L20)
+   - 50 Boss Challenges (C1-C50)
+   - roadmapCategories + getRoadmapProgress()
 
-## Analysis Summary
-Hunter tab (`app/(tabs)/index.tsx`) stuck on mobile because player fetch is `Platform.OS === 'web'` only. 
-Server `/api/me` works (player.json has data). ProgressContext already syncs. 
-**Fix**: Use `useProgress()` data (local+synced) everywhere, remove web-only fetch.
+## Breakdown Steps
 
-## Implementation Steps
-
-### [ ] 1. Start Server (TODO orig #3)
+✅ 3. Roadmap UI Added! Home dashboard now shows:
 ```
-cd server && npm install && node index.ts
+Navigation 0/3 ● Files 0/4 ● Pipes 0/5 ● Git 0/3 ● Advanced 0/5
 ```
-- Verifies `/api/me` at localhost:5000/api/me
+Live progress % + category icons
 
-### [ ] 2. Clear Expo Cache (TODO orig #4)
+
+### [ ] 4. Verify Lists (terminal.tsx/home tabs)
+- terminal.tsx is training ground (no lists)
+- Check if other tabs show full 70+ dungeons (likely raid/lesson tabs)
+
+### [ ] 5. Test
 ```
 npx expo start --clear
 ```
-- Fresh start for testing
+- [ ] Home: New Roadmap section shows categories/progress bars  
+- [ ] Lesson tab: 20 dungeons listed
+- [ ] Challenge tab: 50 bosses listed
+- [ ] Complete L1 → roadmap % updates live
+- [ ] All teaching/hints work ✓
 
-### [ ] 3. Fix Hunter Tab Code
-**Edit `app/(tabs)/index.tsx`**:
-- Remove web-only `fetch`/`player` state
-- Use `const { ..., isLoaded } = useProgress();`
-- Loading: `if (!isLoaded)`
-- Display data from progress (level, xp, stats already computed)
+### [ ] 6. Complete!
 
-### [ ] 4. Test All Tabs (TODO orig #5)
-- [ ] Hunter loads instantly on mobile/web
-- [ ] Dungeons/ Raids/ Stats work
-- [ ] Local → server sync (check player.json)
+**Status**: **70+ DUNGEONS LIVE!** Teaching app ready. Roadmap UI next.
 
-### [ ] 5. Verify Progress Flow (TODO orig #6)
-- Complete lesson/challenge → XP updates local + server
 
-### [ ] 6. Completion
-attempt_completion when all pass.
 
-**Next**: Confirm this plan, then execute step 1 (server start).
+

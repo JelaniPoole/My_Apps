@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -6,9 +6,7 @@ import {
   ScrollView,
   Pressable,
   Platform,
-  Dimensions,
 } from "react-native";
-import { apiUrl } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -17,14 +15,12 @@ import Colors from "@/constants/colors";
 import { useProgress } from "@/lib/progress-context";
 import { getDailyQuests } from "@/lib/linux-data";
 
-
-
 const STAT_META: Record<string, { label: string; icon: string; color: string }> = {
-  STR: { label: "STR", icon: "fitness", color: Colors.statSTR },
-  INT: { label: "INT", icon: "bulb", color: Colors.statINT },
-  AGI: { label: "AGI", icon: "flash", color: Colors.statAGI },
-  VIT: { label: "VIT", icon: "heart", color: Colors.statVIT },
-  DEF: { label: "DEF", icon: "shield", color: Colors.statDEF },
+  STR: { label: "STR", icon: "fitness", color: Colors.statSTR || "#FF6B35" },
+  INT: { label: "INT", icon: "bulb", color: Colors.statINT || "#4DA6FF" },
+  AGI: { label: "AGI", icon: "flash", color: Colors.statAGI || "#39FF14" },
+  VIT: { label: "VIT", icon: "heart", color: Colors.statVIT || "#FF2D55" },
+  DEF: { label: "DEF", icon: "shield", color: Colors.statDEF || "#808080" },
 };
 
 function StatBar({ type, value }: { type: string; value: number }) {
@@ -101,8 +97,6 @@ function DailyQuestCard({
   );
 }
 
-
-
 export default function HunterDashboard() {
   const insets = useSafeAreaInsets();
   const {
@@ -147,10 +141,7 @@ export default function HunterDashboard() {
 
   const webTop = Platform.OS === "web" ? 67 : 0;
 
-  // Use local progress stats so they stay in sync as the user earns XP and power-ups.
   const playerStats: Record<string, number> = stats;
-
-  // Use local progress values for level, XP, and rank to keep the UI consistent.
   const displayLevel = level;
   const displayXp = xp;
   const displayRank = rank.rank;
@@ -158,7 +149,7 @@ export default function HunterDashboard() {
 
   if (!isLoaded) {
     return (
-      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}> 
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
         <Ionicons name="hourglass" size={32} color={Colors.primary} />
         <Text style={{ color: Colors.textSecondary, marginTop: 12, fontSize: 16 }}>Loading Hunter Data...</Text>
       </View>
@@ -430,3 +421,4 @@ const styles = StyleSheet.create({
   },
   nextRankFill: { height: "100%", borderRadius: 3 },
 });
+
