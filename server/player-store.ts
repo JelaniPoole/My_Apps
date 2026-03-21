@@ -34,7 +34,7 @@ export type PlayerRecord = {
   progress: PlayerProgress;
 };
 
-const DEMO_PLAYER_ID = "demo";
+const DEMO_PLAYER_ID = "Jelani-1234"; // In a real app, this would be dynamic or tied to auth
 const STORE_PATH = path.resolve(process.cwd(), "server", "player.json");
 
 const DEFAULT_PROGRESS: PlayerProgress = {
