@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import Colors from "@/constants/colors";
-import { lessons, challenges, commands, getCommandsByCategory, RANKS } from "@/lib/linux-data";
+import { lessons, challenges, getCommandsByCategory, RANKS } from "@/lib/linux-data";
 import { useProgress } from "@/lib/progress-context";
 
 const STAT_META: Record<string, { label: string; fullName: string; icon: string; color: string; desc: string }> = {
@@ -39,7 +39,7 @@ function CommandRefCard({ category, cmds }: { category: string; cmds: { name: st
 export default function StatsScreen() {
   const insets = useSafeAreaInsets();
   const {
-    xp, stats, level, rank, completedLessons, completedChallenges,
+    stats, level, rank, completedLessons, completedChallenges,
     currentStreak, terminalHistory, totalPower,
   } = useProgress();
   const webTop = Platform.OS === "web" ? 67 : 0;

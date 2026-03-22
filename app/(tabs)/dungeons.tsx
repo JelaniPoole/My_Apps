@@ -161,7 +161,7 @@ export default function Dungeons() {
         </View>
 
         <View style={styles.terminalWrap}>
-          <TerminalView onCommand={handleCommand} />
+          <TerminalView commandHandler={handleCommand} />
         </View>
 
         <Modal visible={showComplete} transparent animationType="fade">

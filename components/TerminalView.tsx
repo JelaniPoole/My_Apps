@@ -17,12 +17,18 @@ interface TerminalLine {
   text: string;
 }
 
+interface CommandResult {
+  output: string;
+  type: "output" | "error" | "success";
+}
+
 interface TerminalViewProps {
   /**
    * Optional callback for tracking commands (e.g., XP/progress).
    * The built-in command processor will still run and display output.
    */
   onCommand?: (cmd: string) => void;
+  commandHandler?: (cmd: string) => CommandResult | null | void;
   prompt?: string;
   initialLines?: TerminalLine[];
   autoFocus?: boolean;
@@ -57,6 +63,7 @@ function generateId() {
 
 export default function TerminalView({
   onCommand,
+  commandHandler,
   prompt = "hunter@system:~$",
   initialLines = [],
   autoFocus = true,
@@ -73,7 +80,7 @@ export default function TerminalView({
     if (welcomeMessage) {
       setLines([{ id: generateId(), type: "output", text: welcomeMessage }]);
     }
-  }, []);
+  }, [welcomeMessage]);
 
   function getPrompt() {
     const home = "/home/user";
@@ -94,7 +101,7 @@ export default function TerminalView({
     return cwd === "/" ? "/" + path : cwd + "/" + path;
   }
 
-  function processCommand(cmd: string): { output: string; type: "output" | "error" | "success" } {
+  function processCommand(cmd: string): CommandResult {
     const trimmed = cmd.trim();
     if (!trimmed) return { output: "", type: "output" };
 
@@ -261,7 +268,7 @@ export default function TerminalView({
     const newLines: TerminalLine[] = [...lines];
     newLines.push({ id: generateId(), type: "input", text: `${getPrompt()} ${trimmed}` });
 
-    const result = processCommand(trimmed);
+    const result = commandHandler?.(trimmed) ?? processCommand(trimmed);
     if (result.output) {
       newLines.push({ id: generateId(), type: result.type, text: result.output });
     }

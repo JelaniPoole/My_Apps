@@ -34,6 +34,10 @@ function generateId() {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
 }
 
+function normalizeCommand(command: string) {
+  return command.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
 export default function LessonScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const lesson = lessons.find((l) => l.id === id);
@@ -70,7 +74,10 @@ export default function LessonScreen() {
     const newLines: OutputLine[] = [...outputLines];
     newLines.push({ id: generateId(), type: "prompt", text: `$ ${trimmed}` });
 
-    if (trimmed === step.expectedCommand) {
+    const normalizedInput = normalizeCommand(trimmed);
+    const acceptedCommands = step.acceptedCommands ?? [step.expectedCommand];
+
+    if (acceptedCommands.some((command) => normalizeCommand(command) === normalizedInput)) {
       if (step.output) {
         newLines.push({ id: generateId(), type: "output", text: step.output });
       }
@@ -178,7 +185,30 @@ export default function LessonScreen() {
       </View>
 
       <Animated.View entering={SlideInRight.duration(300)} style={styles.instructionCard}>
+        <View style={styles.lessonMetaRow}>
+          <View style={styles.lessonChip}>
+            <Text style={styles.lessonChipLabel}>Concept</Text>
+            <Text style={styles.lessonChipValue}>{step.concept}</Text>
+          </View>
+          <View style={styles.lessonChip}>
+            <Text style={styles.lessonChipLabel}>Track</Text>
+            <Text style={styles.lessonChipValue}>{lesson.category}</Text>
+          </View>
+        </View>
         <Text style={styles.instruction}>{step.instruction}</Text>
+        <Text style={styles.explanation}>{step.explanation}</Text>
+        {step.example ? (
+          <View style={styles.exampleBox}>
+            <Text style={styles.exampleLabel}>Example</Text>
+            <Text style={styles.exampleText}>{step.example}</Text>
+          </View>
+        ) : null}
+        {step.whyItWorks ? (
+          <View style={styles.whyBox}>
+            <Text style={styles.whyLabel}>Why it works</Text>
+            <Text style={styles.whyText}>{step.whyItWorks}</Text>
+          </View>
+        ) : null}
         {showHint && (
           <View style={styles.hintBox}>
             <Ionicons name="bulb" size={14} color={Colors.warning} />
@@ -320,6 +350,75 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.text,
     lineHeight: 24,
+    fontWeight: "700" as const,
+  },
+  lessonMetaRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 14,
+  },
+  lessonChip: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  lessonChipLabel: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    textTransform: "uppercase" as const,
+  },
+  lessonChipValue: {
+    color: Colors.accent,
+    fontSize: 13,
+    fontWeight: "700" as const,
+    marginTop: 4,
+  },
+  explanation: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    lineHeight: 22,
+    marginTop: 10,
+  },
+  exampleBox: {
+    marginTop: 14,
+    backgroundColor: Colors.background,
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  exampleLabel: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    textTransform: "uppercase" as const,
+  },
+  exampleText: {
+    color: Colors.terminalGreen,
+    fontFamily: monoFont,
+    fontSize: 13,
+    marginTop: 6,
+  },
+  whyBox: {
+    marginTop: 12,
+    backgroundColor: Colors.accent + "10",
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: Colors.accent + "25",
+  },
+  whyLabel: {
+    color: Colors.accent,
+    fontSize: 11,
+    textTransform: "uppercase" as const,
+  },
+  whyText: {
+    color: Colors.text,
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 6,
   },
   hintBox: {
     flexDirection: "row",

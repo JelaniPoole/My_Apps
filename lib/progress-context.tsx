@@ -75,6 +75,7 @@ const defaultProgress: ProgressData = {
 type ServerProgressPayload = Partial<ProgressData> & {
   xp?: number;
   stats?: Stats;
+  progress?: Partial<ProgressData>;
 };
 
 async function fetchServerProgress(): Promise<ServerProgressPayload | null> {
@@ -82,8 +83,15 @@ async function fetchServerProgress(): Promise<ServerProgressPayload | null> {
     const res = await fetch(apiUrl("/api/me"));
     if (!res.ok) return null;
     const data = (await res.json()) as ServerProgressPayload;
-    if (typeof data.xp !== "number" || typeof data.stats !== "object") return null;
-    return data;
+    const nested = data.progress ?? {};
+    const normalized: ServerProgressPayload = {
+      ...nested,
+      xp: typeof data.xp === "number" ? data.xp : nested.xp,
+      stats: typeof data.stats === "object" ? data.stats : nested.stats,
+      title: data.title ?? nested.title,
+    };
+    if (typeof normalized.xp !== "number" || typeof normalized.stats !== "object") return null;
+    return normalized;
   } catch {
     return null;
   }

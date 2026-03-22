@@ -1,0 +1,72 @@
+import type { Command } from "./types";
+
+export const commands: Command[] = [
+  { name: "pwd", syntax: "pwd", description: "Print working directory", examples: ["pwd"], category: "Navigation", statType: "AGI" },
+  { name: "ls", syntax: "ls [options] [path]", description: "List directory contents", examples: ["ls", "ls -la", "ls /home"], category: "Navigation", statType: "AGI" },
+  { name: "cd", syntax: "cd [directory]", description: "Change directory", examples: ["cd /home", "cd ..", "cd ~"], category: "Navigation", statType: "AGI" },
+  { name: "mkdir", syntax: "mkdir [directory]", description: "Create a new directory", examples: ["mkdir projects", "mkdir -p a/b/c"], category: "Files", statType: "STR" },
+  { name: "touch", syntax: "touch [file]", description: "Create an empty file", examples: ["touch notes.txt", "touch index.html"], category: "Files", statType: "STR" },
+  { name: "rm", syntax: "rm [options] [file]", description: "Remove files or directories", examples: ["rm file.txt", "rm -r folder"], category: "Files", statType: "STR" },
+  { name: "cp", syntax: "cp [source] [dest]", description: "Copy files or directories", examples: ["cp file.txt backup.txt", "cp -r src dest"], category: "Files", statType: "STR" },
+  { name: "mv", syntax: "mv [source] [dest]", description: "Move or rename files", examples: ["mv old.txt new.txt", "mv file.txt /tmp/"], category: "Files", statType: "STR" },
+  { name: "cat", syntax: "cat [file]", description: "Display file contents", examples: ["cat readme.txt"], category: "Viewing", statType: "INT" },
+  { name: "echo", syntax: "echo [text]", description: "Print text to terminal", examples: ["echo Hello", "echo $HOME"], category: "Basics", statType: "VIT" },
+  { name: "grep", syntax: "grep [pattern] [file]", description: "Search for patterns in files", examples: ["grep error log.txt"], category: "Text", statType: "INT" },
+  { name: "chmod", syntax: "chmod [mode] [file]", description: "Change file permissions", examples: ["chmod 755 script.sh", "chmod +x run.sh"], category: "Permissions", statType: "DEF" },
+  { name: "whoami", syntax: "whoami", description: "Display current username", examples: ["whoami"], category: "System", statType: "VIT" },
+  { name: "head", syntax: "head [options] [file]", description: "Display first lines of a file", examples: ["head file.txt", "head -3 file.txt"], category: "Viewing", statType: "INT" },
+  { name: "tail", syntax: "tail [options] [file]", description: "Display last lines of a file", examples: ["tail file.txt", "tail -5 file.txt"], category: "Viewing", statType: "INT" },
+  { name: "wc", syntax: "wc [options] [file]", description: "Count lines, words, characters", examples: ["wc file.txt", "wc -l log.txt"], category: "Text", statType: "INT" },
+  { name: "sort", syntax: "sort [options] [file]", description: "Sort lines of text", examples: ["sort names.txt"], category: "Text", statType: "INT" },
+  { name: "find", syntax: "find [path] [expression]", description: "Search for files", examples: ["find . -name '*.txt'"], category: "Navigation", statType: "AGI" },
+  { name: "clear", syntax: "clear", description: "Clear the terminal screen", examples: ["clear"], category: "Basics", statType: "VIT" },
+  { name: "man", syntax: "man [command]", description: "Display manual page", examples: ["man ls"], category: "Basics", statType: "VIT" },
+  { name: "ps", syntax: "ps [options]", description: "List running processes", examples: ["ps aux", "ps -ef"], category: "Processes", statType: "VIT" },
+  { name: "kill", syntax: "kill [pid]", description: "Terminate a process", examples: ["kill 1234"], category: "Processes", statType: "VIT" },
+  { name: "top", syntax: "top", description: "Monitor system processes", examples: ["top"], category: "Monitoring", statType: "VIT" },
+  { name: "df", syntax: "df [options]", description: "Disk usage summary", examples: ["df -h"], category: "System", statType: "VIT" },
+  { name: "du", syntax: "du [options] [path]", description: "Estimate file space usage", examples: ["du -sh *", "du -sh /var/log"], category: "System", statType: "VIT" },
+  { name: "free", syntax: "free [options]", description: "Memory usage", examples: ["free -h"], category: "System", statType: "VIT" },
+  { name: "uptime", syntax: "uptime", description: "System uptime", examples: ["uptime"], category: "System", statType: "VIT" },
+  { name: "date", syntax: "date", description: "Display current date/time", examples: ["date"], category: "Basics", statType: "VIT" },
+  { name: "history", syntax: "history", description: "Command history", examples: ["history"], category: "Basics", statType: "VIT" },
+  { name: "which", syntax: "which [command]", description: "Locate executable", examples: ["which ls"], category: "Navigation", statType: "AGI" },
+  { name: "file", syntax: "file [filename]", description: "File type identification", examples: ["file image.jpg"], category: "Viewing", statType: "INT" },
+  { name: "ln", syntax: "ln [options] [source] [target]", description: "Create hard/soft links", examples: ["ln -s file.txt link.txt"], category: "Files", statType: "STR" },
+  { name: "tar", syntax: "tar [options] [archive] [files]", description: "Archive files", examples: ["tar -czf backup.tar.gz folder/"], category: "Archives", statType: "STR" },
+  { name: "gzip", syntax: "gzip [options] [file]", description: "Compress files", examples: ["gzip large.log"], category: "Archives", statType: "STR" },
+  { name: "unzip", syntax: "unzip [archive]", description: "Extract zip files", examples: ["unzip project.zip"], category: "Archives", statType: "STR" },
+  { name: "wget", syntax: "wget [url]", description: "Download files", examples: ["wget https://example.com/file"], category: "Network", statType: "AGI" },
+  { name: "curl", syntax: "curl [options] [url]", description: "Transfer data", examples: ["curl https://example.com"], category: "Network", statType: "AGI" },
+  { name: "ping", syntax: "ping [host]", description: "Test network connectivity", examples: ["ping example.com"], category: "Network", statType: "AGI" },
+  { name: "ssh", syntax: "ssh [user@host]", description: "Remote login", examples: ["ssh user@server.com"], category: "Network", statType: "AGI" },
+  { name: "scp", syntax: "scp [source] [dest]", description: "Secure copy", examples: ["scp file.txt user@server:/tmp/"], category: "Network", statType: "AGI" },
+  { name: "apt", syntax: "apt [command]", description: "Package manager (Debian)", examples: ["apt update", "apt install vim"], category: "Packages", statType: "VIT" },
+  { name: "git", syntax: "git [command]", description: "Version control", examples: ["git status", "git log --oneline"], category: "Git", statType: "INT" },
+  { name: "docker", syntax: "docker [command]", description: "Container runtime", examples: ["docker ps", "docker run"], category: "Containers", statType: "VIT" },
+  { name: "systemctl", syntax: "systemctl [command]", description: "Systemd service manager", examples: ["systemctl status nginx"], category: "Services", statType: "DEF" },
+  { name: "journalctl", syntax: "journalctl [options]", description: "Query systemd journal", examples: ["journalctl -u nginx"], category: "Logs", statType: "INT" },
+  { name: "sed", syntax: "sed [expression] [file]", description: "Stream editor", examples: ["sed 's/old/new/' file.txt"], category: "Text", statType: "INT" },
+  { name: "awk", syntax: "awk [program] [file]", description: "Pattern scanning", examples: ["awk '{print $1}' file.txt"], category: "Text", statType: "INT" },
+  { name: "cut", syntax: "cut [options] [file]", description: "Extract sections", examples: ["cut -d: -f1 /etc/passwd"], category: "Text", statType: "INT" },
+  { name: "tr", syntax: "tr [set1] [set2]", description: "Translate characters", examples: ["tr 'a-z' 'A-Z'"], category: "Text", statType: "INT" },
+  { name: "tee", syntax: "tee [options] [file]", description: "Pipe to file and stdout", examples: ["ls | tee listing.txt"], category: "Pipes", statType: "INT" },
+  { name: "|", syntax: "|", description: "Pipe operator", examples: ["ls | grep txt"], category: "Pipes", statType: "INT" },
+  { name: ">", syntax: ">", description: "Redirect output to file", examples: ["ls > files.txt"], category: "Redirects", statType: "INT" },
+  { name: ">>", syntax: ">>", description: "Append to file", examples: ["echo done >> log.txt"], category: "Redirects", statType: "INT" },
+  { name: "&&", syntax: "&&", description: "Logical AND", examples: ["mkdir dir && cd dir"], category: "Logic", statType: "INT" },
+  { name: "sudo", syntax: "sudo [command]", description: "Run a command with elevated privileges", examples: ["sudo apt update"], category: "Permissions", statType: "DEF" },
+  { name: "netstat", syntax: "netstat [options]", description: "Inspect network connections", examples: ["netstat -tulpn"], category: "Network", statType: "AGI" },
+  { name: "ss", syntax: "ss [options]", description: "Inspect sockets and ports", examples: ["ss -tulpn"], category: "Network", statType: "AGI" },
+  { name: "vim", syntax: "vim [file]", description: "Advanced text editor", examples: ["vim config.txt"], category: "Editors", statType: "INT" },
+  { name: "nano", syntax: "nano [file]", description: "Simple text editor", examples: ["nano notes.txt"], category: "Editors", statType: "INT" },
+];
+
+export function getCommandsByCategory(): Record<string, Command[]> {
+  const grouped: Record<string, Command[]> = {};
+  commands.forEach((cmd) => {
+    if (!grouped[cmd.category]) grouped[cmd.category] = [];
+    grouped[cmd.category].push(cmd);
+  });
+  return grouped;
+}

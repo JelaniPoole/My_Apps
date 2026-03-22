@@ -11,9 +11,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { router } from "expo-router";
 import Colors from "@/constants/colors";
 import { useProgress } from "@/lib/progress-context";
-import { getDailyQuests } from "@/lib/linux-data";
+import { getDailyQuests, getNextLessonRecommendation } from "@/lib/linux-data";
 
 const STAT_META: Record<string, { label: string; icon: string; color: string }> = {
   STR: { label: "STR", icon: "fitness", color: Colors.statSTR || "#FF6B35" },
@@ -118,6 +119,7 @@ export default function HunterDashboard() {
 
   const today = new Date().toDateString();
   const quests = getDailyQuests(today);
+  const nextLesson = getNextLessonRecommendation(completedLessons);
 
   function getQuestProgress(quest: { type: string }) {
     switch (quest.type) {
@@ -232,6 +234,34 @@ export default function HunterDashboard() {
         </Animated.View>
 
         <Animated.View entering={FadeInDown.duration(600).delay(300)}>
+          {nextLesson ? (
+            <>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="compass" size={18} color={Colors.accent} />
+                <Text style={styles.sectionTitle}>Recommended Next</Text>
+              </View>
+              <Pressable onPress={() => router.push(`/lesson/${nextLesson.id}`)} style={({ pressed }) => [styles.recommendCard, pressed && styles.pressed]}>
+                <LinearGradient colors={[Colors.accent + "18", Colors.surface]} style={styles.recommendGradient}>
+                  <View style={styles.recommendTop}>
+                    <View style={styles.recommendIcon}>
+                      <Ionicons name={nextLesson.icon as any} size={22} color={Colors.accent} />
+                    </View>
+                    <View style={styles.recommendBody}>
+                      <Text style={styles.recommendEyebrow}>{nextLesson.category}</Text>
+                      <Text style={styles.recommendTitle}>{nextLesson.title}</Text>
+                      <Text style={styles.recommendDesc}>{nextLesson.description}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.recommendFooter}>
+                    <Text style={styles.recommendMeta}>{nextLesson.steps.length} steps</Text>
+                    <Text style={styles.recommendMeta}>+{nextLesson.xpReward} XP</Text>
+                    <Text style={styles.recommendAction}>Start Lesson</Text>
+                  </View>
+                </LinearGradient>
+              </Pressable>
+            </>
+          ) : null}
+
           <View style={styles.sectionHeader}>
             <Ionicons name="today" size={18} color={Colors.warning} />
             <Text style={styles.sectionTitle}>Daily Quests</Text>
@@ -279,6 +309,7 @@ export default function HunterDashboard() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   scroll: { flex: 1 },
+  pressed: { opacity: 0.88 },
 
   headerGradient: {
     flexDirection: "row",
@@ -334,6 +365,68 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sectionTitle: { color: Colors.text, fontSize: 16, fontWeight: "700" },
+  recommendCard: {
+    marginHorizontal: 16,
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: Colors.accent + "30",
+  },
+  recommendGradient: {
+    padding: 16,
+  },
+  recommendTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  recommendIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.background,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.accent + "30",
+  },
+  recommendBody: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  recommendEyebrow: {
+    color: Colors.accent,
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  recommendTitle: {
+    color: Colors.text,
+    fontSize: 17,
+    fontWeight: "700",
+    marginTop: 4,
+  },
+  recommendDesc: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 6,
+  },
+  recommendFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 14,
+    gap: 12,
+  },
+  recommendMeta: {
+    color: Colors.textMuted,
+    fontSize: 12,
+  },
+  recommendAction: {
+    marginLeft: "auto",
+    color: Colors.accent,
+    fontSize: 13,
+    fontWeight: "700",
+  },
 
   statsCard: {
     backgroundColor: Colors.surface,
