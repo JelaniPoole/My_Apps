@@ -20,6 +20,7 @@ interface TerminalLine {
 interface CommandResult {
   output: string;
   type: "output" | "error" | "success";
+  extraLines?: TerminalLine[];
 }
 
 interface TerminalViewProps {
@@ -83,9 +84,13 @@ export default function TerminalView({
   }, [welcomeMessage]);
 
   function getPrompt() {
-    const home = "/home/user";
-    const display = cwd === home ? "~" : cwd.replace(home, "~");
-    return `hunter@system:${display}$`;
+    if (prompt.includes(":~$") || prompt.includes(":/$")) {
+      const home = "/home/user";
+      const display = cwd === home ? "~" : cwd.replace(home, "~");
+      const promptBase = prompt.includes(":") ? prompt.slice(0, prompt.lastIndexOf(":")) : "hunter@system";
+      return `${promptBase}:${display}$`;
+    }
+    return prompt;
   }
 
   function resolvePath(path: string): string {
@@ -272,6 +277,14 @@ export default function TerminalView({
     if (result.output) {
       newLines.push({ id: generateId(), type: result.type, text: result.output });
     }
+    if (result.extraLines?.length) {
+      newLines.push(
+        ...result.extraLines.map((line) => ({
+          ...line,
+          id: line.id || generateId(),
+        }))
+      );
+    }
 
     if (onCommand) {
       onCommand(trimmed);
@@ -294,18 +307,27 @@ export default function TerminalView({
         showsVerticalScrollIndicator={false}
         onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
       >
+        {lines.length === 0 ? <Text style={[styles.line, styles.idlePrompt]}>{getPrompt()}</Text> : null}
         {lines.map((line) => (
-          <Text
-            key={line.id}
-            style={[
-              styles.line,
-              line.type === "input" && styles.inputLine,
-              line.type === "error" && styles.errorLine,
-              line.type === "success" && styles.successLine,
-            ]}
-          >
-            {line.text}
-          </Text>
+          line.type === "input" ? (
+            <Text key={line.id} style={styles.line}>
+              <Text style={styles.promptText}>{getPrompt()} </Text>
+              <Text style={styles.inputLine}>
+                {line.text.slice(getPrompt().length + 1)}
+              </Text>
+            </Text>
+          ) : (
+            <Text
+              key={line.id}
+              style={[
+                styles.line,
+                line.type === "error" && styles.errorLine,
+                line.type === "success" && styles.successLine,
+              ]}
+            >
+              {line.text}
+            </Text>
+          )
         ))}
       </ScrollView>
       <View style={styles.inputRow}>
@@ -363,11 +385,14 @@ const styles = StyleSheet.create({
   inputLine: {
     color: Colors.terminalGreen,
   },
+  idlePrompt: {
+    color: Colors.accent,
+  },
   errorLine: {
     color: Colors.error,
   },
   successLine: {
-    color: Colors.success,
+    color: Colors.warning,
   },
   inputRow: {
     flexDirection: "row",
@@ -383,6 +408,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.accent,
   },
+  promptText: {
+    color: Colors.accent,
+  },
   input: {
     flex: 1,
     fontFamily: monoFont,
@@ -390,5 +418,6 @@ const styles = StyleSheet.create({
     color: Colors.terminalGreen,
     padding: 0,
     margin: 0,
+    minHeight: 20,
   },
 });

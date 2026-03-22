@@ -224,24 +224,31 @@ export default function LessonScreen() {
           contentContainerStyle={styles.terminalContent}
           showsVerticalScrollIndicator={false}
         >
+          {outputLines.length === 0 ? <Text style={[styles.termLine, styles.promptLine]}>hunter@system:~$</Text> : null}
           {outputLines.map((line) => (
-            <Text
-              key={line.id}
-              style={[
-                styles.termLine,
-                line.type === "prompt" && styles.promptLine,
-                line.type === "error" && styles.errorLine,
-                line.type === "success" && styles.successLine,
-              ]}
-            >
-              {line.text}
-            </Text>
+            line.type === "prompt" ? (
+              <Text key={line.id} style={styles.termLine}>
+                <Text style={styles.promptLine}>$ </Text>
+                <Text style={styles.commandLine}>{line.text.slice(2)}</Text>
+              </Text>
+            ) : (
+              <Text
+                key={line.id}
+                style={[
+                  styles.termLine,
+                  line.type === "error" && styles.errorLine,
+                  line.type === "success" && styles.successLine,
+                ]}
+              >
+                {line.text}
+              </Text>
+            )
           ))}
         </ScrollView>
 
         {!stepCompleted ? (
           <View style={styles.inputRow}>
-            <Text style={styles.promptChar}>$ </Text>
+            <Text style={styles.promptChar}>hunter@system:~$ </Text>
             <TextInput
               ref={inputRef}
               style={styles.input}
@@ -457,13 +464,16 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   promptLine: {
+    color: Colors.accent,
+  },
+  commandLine: {
     color: Colors.terminalGreen,
   },
   errorLine: {
     color: Colors.error,
   },
   successLine: {
-    color: Colors.accent,
+    color: Colors.warning,
   },
   inputRow: {
     flexDirection: "row",

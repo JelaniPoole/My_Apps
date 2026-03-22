@@ -108,8 +108,15 @@ export default function Dungeons() {
         setTimeout(() => setShowComplete(true), 500);
       }
       return {
-        output: output ? output + "\n" + step.successMessage : step.successMessage,
-        type: "success" as const,
+        output: output,
+        type: "output" as const,
+        extraLines: [
+          {
+            id: "",
+            text: step.successMessage,
+            type: "success" as const,
+          },
+        ],
       };
     }
     return {
