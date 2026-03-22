@@ -171,8 +171,33 @@ export default function Dungeons() {
         </View>
 
         <View style={styles.instructionCard}>
-          <Ionicons name="alert-circle" size={18} color={Colors.accent} />
-          <Text style={styles.instructionText}>{step?.instruction}</Text>
+          <View style={styles.lessonMetaRow}>
+            <View style={styles.lessonChip}>
+              <Text style={styles.lessonChipLabel}>Concept</Text>
+              <Text style={styles.lessonChipValue}>{step?.concept}</Text>
+            </View>
+            <View style={styles.lessonChip}>
+              <Text style={styles.lessonChipLabel}>Track</Text>
+              <Text style={styles.lessonChipValue}>{activeLesson.category}</Text>
+            </View>
+          </View>
+          <View style={styles.instructionHeader}>
+            <Ionicons name="alert-circle" size={18} color={Colors.accent} />
+            <Text style={styles.instructionText}>{step?.instruction}</Text>
+          </View>
+          <Text style={styles.explanationText}>{step?.explanation}</Text>
+          {step?.example ? (
+            <View style={styles.exampleBox}>
+              <Text style={styles.exampleLabel}>Example</Text>
+              <Text style={styles.exampleText}>{step.example}</Text>
+            </View>
+          ) : null}
+          {step?.whyItWorks ? (
+            <View style={styles.whyBox}>
+              <Text style={styles.whyLabel}>Why it works</Text>
+              <Text style={styles.whyText}>{step.whyItWorks}</Text>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.terminalWrap}>
@@ -293,17 +318,86 @@ const styles = StyleSheet.create({
   floorLocked: { backgroundColor: Colors.border },
 
   instructionCard: {
-    flexDirection: "row",
-    alignItems: "center",
     backgroundColor: Colors.surface,
     marginHorizontal: 16,
     padding: 14,
     borderRadius: 12,
-    gap: 10,
     borderWidth: 1,
     borderColor: Colors.accent + "30",
   },
-  instructionText: { flex: 1, color: Colors.text, fontSize: 14, lineHeight: 20 },
+  lessonMetaRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 14,
+  },
+  lessonChip: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  lessonChipLabel: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    textTransform: "uppercase",
+  },
+  lessonChipValue: {
+    color: Colors.accent,
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 4,
+  },
+  instructionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  instructionText: { flex: 1, color: Colors.text, fontSize: 15, lineHeight: 22, fontWeight: "700" },
+  explanationText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 22,
+    marginTop: 10,
+  },
+  exampleBox: {
+    marginTop: 14,
+    backgroundColor: Colors.background,
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  exampleLabel: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    textTransform: "uppercase",
+  },
+  exampleText: {
+    color: Colors.terminalGreen,
+    fontSize: 13,
+    marginTop: 6,
+  },
+  whyBox: {
+    marginTop: 12,
+    backgroundColor: Colors.accent + "10",
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: Colors.accent + "25",
+  },
+  whyLabel: {
+    color: Colors.accent,
+    fontSize: 11,
+    textTransform: "uppercase",
+  },
+  whyText: {
+    color: Colors.text,
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 6,
+  },
 
   terminalWrap: { flex: 1, margin: 16 },
 
