@@ -23,21 +23,28 @@ interface CommandResult {
   extraLines?: TerminalLine[];
 }
 
+interface CommandHandlerHelpers {
+  runDefaultCommand: (cmd: string) => CommandResult;
+}
+
 interface TerminalViewProps {
   /**
    * Optional callback for tracking commands (e.g., XP/progress).
    * The built-in command processor will still run and display output.
    */
   onCommand?: (cmd: string) => void;
-  commandHandler?: (cmd: string) => CommandResult | null | void;
+  commandHandler?: (cmd: string, helpers: CommandHandlerHelpers) => CommandResult | null | void;
   prompt?: string;
   initialLines?: TerminalLine[];
   autoFocus?: boolean;
   disabled?: boolean;
   welcomeMessage?: string;
+  initialCwd?: string;
+  initialDirectories?: Record<string, string[]>;
+  initialFiles?: Record<string, string>;
 }
 
-const SIMULATED_FS: Record<string, string[]> = {
+const DEFAULT_DIRECTORIES: Record<string, string[]> = {
   "/": ["home", "etc", "var", "tmp", "usr"],
   "/home": ["user"],
   "/home/user": ["Desktop", "Documents", "Downloads", "Music", "Pictures", "projects"],
@@ -50,7 +57,7 @@ const SIMULATED_FS: Record<string, string[]> = {
   "/tmp": ["temp.log"],
 };
 
-const FILE_CONTENTS: Record<string, string> = {
+const DEFAULT_FILES: Record<string, string> = {
   "/home/user/Documents/notes.txt": "Welcome to Linux!\nThis is a text file.\nYou're doing great!\nKeep learning commands.\nPractice makes perfect.",
   "/home/user/Documents/report.txt": "Quarterly Report Q1 2024\nRevenue: $1.2M\nGrowth: 15%\nTeam size: 12",
   "/etc/hostname": "terminal-quest",
@@ -62,6 +69,49 @@ function generateId() {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
 }
 
+function cloneDirectories(directories: Record<string, string[]>) {
+  return Object.fromEntries(Object.entries(directories).map(([path, entries]) => [path, [...entries]]));
+}
+
+function cloneFiles(files: Record<string, string>) {
+  return { ...files };
+}
+
+function splitPath(path: string) {
+  return path.split("/").filter(Boolean);
+}
+
+function getParentPath(path: string) {
+  const parts = splitPath(path);
+  parts.pop();
+  return parts.length ? `/${parts.join("/")}` : "/";
+}
+
+function getBaseName(path: string) {
+  const parts = splitPath(path);
+  return parts[parts.length - 1] ?? "";
+}
+
+function normalizePath(path: string) {
+  const segments = path.split("/");
+  const normalized: string[] = [];
+
+  for (const segment of segments) {
+    if (!segment || segment === ".") continue;
+    if (segment === "..") {
+      normalized.pop();
+      continue;
+    }
+    normalized.push(segment);
+  }
+
+  return normalized.length ? `/${normalized.join("/")}` : "/";
+}
+
+function listDirectoryNames(path: string, directories: Record<string, string[]>) {
+  return directories[path] ?? [];
+}
+
 export default function TerminalView({
   onCommand,
   commandHandler,
@@ -70,12 +120,27 @@ export default function TerminalView({
   autoFocus = true,
   disabled = false,
   welcomeMessage,
+  initialCwd = "/home/user",
+  initialDirectories,
+  initialFiles,
 }: TerminalViewProps) {
   const [lines, setLines] = useState<TerminalLine[]>(initialLines);
   const [input, setInput] = useState("");
-  const [cwd, setCwd] = useState("/home/user");
+  const [cwd, setCwd] = useState(initialCwd);
+  const [directories, setDirectories] = useState<Record<string, string[]>>(() =>
+    cloneDirectories(initialDirectories ?? DEFAULT_DIRECTORIES)
+  );
+  const [files, setFiles] = useState<Record<string, string>>(() =>
+    cloneFiles(initialFiles ?? DEFAULT_FILES)
+  );
   const scrollRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    setCwd(initialCwd);
+    setDirectories(cloneDirectories(initialDirectories ?? DEFAULT_DIRECTORIES));
+    setFiles(cloneFiles(initialFiles ?? DEFAULT_FILES));
+  }, [initialCwd, initialDirectories, initialFiles]);
 
   useEffect(() => {
     if (welcomeMessage) {
@@ -85,7 +150,7 @@ export default function TerminalView({
 
   function getPrompt() {
     if (prompt.includes(":~$") || prompt.includes(":/$")) {
-      const home = "/home/user";
+      const home = initialCwd.startsWith("/home/") ? initialCwd.split("/").slice(0, 3).join("/") : "/home/user";
       const display = cwd === home ? "~" : cwd.replace(home, "~");
       const promptBase = prompt.includes(":") ? prompt.slice(0, prompt.lastIndexOf(":")) : "hunter@system";
       return `${promptBase}:${display}$`;
@@ -94,16 +159,155 @@ export default function TerminalView({
   }
 
   function resolvePath(path: string): string {
-    if (path === "~" || path === "$HOME") return "/home/user";
-    if (path.startsWith("~/")) return "/home/user" + path.slice(1);
-    if (path.startsWith("/")) return path;
+    const home = initialCwd.startsWith("/home/") ? initialCwd.split("/").slice(0, 3).join("/") : "/home/user";
+    if (path === "~" || path === "$HOME") return home;
+    if (path.startsWith("~/")) return normalizePath(home + path.slice(1));
+    if (path.startsWith("/")) return normalizePath(path);
     if (path === "..") {
       const parts = cwd.split("/").filter(Boolean);
       parts.pop();
       return "/" + parts.join("/") || "/";
     }
     if (path === ".") return cwd;
-    return cwd === "/" ? "/" + path : cwd + "/" + path;
+    return normalizePath(cwd === "/" ? "/" + path : cwd + "/" + path);
+  }
+
+  function createDirectory(path: string) {
+    const parent = getParentPath(path);
+    const name = getBaseName(path);
+
+    if (!name) return { ok: false, error: `mkdir: cannot create directory '${path}': Invalid path` };
+    if (directories[path] !== undefined || files[path] !== undefined) {
+      return { ok: false, error: `mkdir: cannot create directory '${name}': File exists` };
+    }
+    if (directories[parent] === undefined) {
+      return { ok: false, error: `mkdir: cannot create directory '${name}': No such file or directory` };
+    }
+
+    setDirectories((prev) => {
+      const next = cloneDirectories(prev);
+      next[path] = [];
+      next[parent] = [...(next[parent] ?? []), name];
+      return next;
+    });
+    return { ok: true };
+  }
+
+  function createFile(path: string, content = "") {
+    const parent = getParentPath(path);
+    const name = getBaseName(path);
+
+    if (!name) return { ok: false, error: `touch: cannot touch '${path}': Invalid path` };
+    if (directories[parent] === undefined) {
+      return { ok: false, error: `touch: cannot touch '${name}': No such file or directory` };
+    }
+
+    setFiles((prev) => ({ ...prev, [path]: prev[path] ?? content }));
+    if (!listDirectoryNames(parent, directories).includes(name)) {
+      setDirectories((prev) => {
+        const next = cloneDirectories(prev);
+        next[parent] = [...(next[parent] ?? []), name];
+        return next;
+      });
+    }
+    return { ok: true };
+  }
+
+  function removePath(path: string) {
+    const name = getBaseName(path);
+    const parent = getParentPath(path);
+
+    if (files[path] !== undefined) {
+      setFiles((prev) => {
+        const next = { ...prev };
+        delete next[path];
+        return next;
+      });
+      setDirectories((prev) => {
+        const next = cloneDirectories(prev);
+        next[parent] = (next[parent] ?? []).filter((entry) => entry !== name);
+        return next;
+      });
+      return { ok: true };
+    }
+
+    if (directories[path] !== undefined) {
+      if ((directories[path] ?? []).length > 0) {
+        return { ok: false, error: `rm: cannot remove '${name}': Directory not empty` };
+      }
+      setDirectories((prev) => {
+        const next = cloneDirectories(prev);
+        delete next[path];
+        next[parent] = (next[parent] ?? []).filter((entry) => entry !== name);
+        return next;
+      });
+      return { ok: true };
+    }
+
+    return { ok: false, error: `rm: cannot remove '${name}': No such file or directory` };
+  }
+
+  function copyFile(source: string, destination: string) {
+    if (files[source] === undefined) {
+      return { ok: false, error: `cp: cannot stat '${getBaseName(source)}': No such file or directory` };
+    }
+    const created = createFile(destination, files[source]);
+    if (!created.ok) return created;
+    setFiles((prev) => ({ ...prev, [destination]: files[source] }));
+    return { ok: true };
+  }
+
+  function moveFile(source: string, destination: string) {
+    if (files[source] === undefined) {
+      return { ok: false, error: `mv: cannot stat '${getBaseName(source)}': No such file or directory` };
+    }
+
+    const sourceParent = getParentPath(source);
+    const sourceName = getBaseName(source);
+    const destParent = getParentPath(destination);
+    const destName = getBaseName(destination);
+
+    if (directories[destParent] === undefined) {
+      return { ok: false, error: `mv: cannot move to '${destName}': No such file or directory` };
+    }
+
+    const sourceContent = files[source];
+    setFiles((prev) => {
+      const next = { ...prev };
+      delete next[source];
+      next[destination] = sourceContent;
+      return next;
+    });
+    setDirectories((prev) => {
+      const next = cloneDirectories(prev);
+      next[sourceParent] = (next[sourceParent] ?? []).filter((entry) => entry !== sourceName);
+      if (!(next[destParent] ?? []).includes(destName)) {
+        next[destParent] = [...(next[destParent] ?? []), destName];
+      }
+      return next;
+    });
+    return { ok: true };
+  }
+
+  function writeRedirectedFile(destination: string, content: string, append: boolean) {
+    const parent = getParentPath(destination);
+    const name = getBaseName(destination);
+    if (directories[parent] === undefined) {
+      return { ok: false, error: `cannot write '${name}': No such file or directory` };
+    }
+
+    setFiles((prev) => ({
+      ...prev,
+      [destination]: append && prev[destination] ? `${prev[destination]}\n${content}` : content,
+    }));
+    if (!listDirectoryNames(parent, directories).includes(name)) {
+      setDirectories((prev) => {
+        const next = cloneDirectories(prev);
+        next[parent] = [...(next[parent] ?? []), name];
+        return next;
+      });
+    }
+    return { ok: true };
   }
 
   function processCommand(cmd: string): CommandResult {
@@ -122,13 +326,12 @@ export default function TerminalView({
         const showAll = args.includes("-la") || args.includes("-l") || args.includes("-a");
         const targetPath = args.find((a) => !a.startsWith("-"));
         const path = targetPath ? resolvePath(targetPath) : cwd;
-        const contents = SIMULATED_FS[path];
-        if (!contents && contents !== undefined) return { output: `ls: cannot access '${targetPath}': No such file or directory`, type: "error" };
-        if (contents === undefined) return { output: `ls: cannot access '${path}': No such file or directory`, type: "error" };
+        const contents = directories[path];
+        if (contents === undefined) return { output: `ls: cannot access '${targetPath ?? path}': No such file or directory`, type: "error" };
         if (showAll) {
           const items = contents.map((item) => {
             const fullPath = path === "/" ? "/" + item : path + "/" + item;
-            const isDir = SIMULATED_FS[fullPath] !== undefined;
+            const isDir = directories[fullPath] !== undefined;
             return `${isDir ? "d" : "-"}rwxr-xr-x  1 user user  4096 Jan 15 10:00 ${item}`;
           });
           return { output: items.join("\n") || "(empty)", type: "output" };
@@ -138,11 +341,11 @@ export default function TerminalView({
 
       case "cd": {
         if (args.length === 0 || args[0] === "~") {
-          setCwd("/home/user");
+          setCwd(resolvePath("~"));
           return { output: "", type: "output" };
         }
         const target = resolvePath(args[0]);
-        if (SIMULATED_FS[target] !== undefined) {
+        if (directories[target] !== undefined) {
           setCwd(target);
           return { output: "", type: "output" };
         }
@@ -152,8 +355,8 @@ export default function TerminalView({
       case "cat": {
         if (args.length === 0) return { output: "cat: missing file operand", type: "error" };
         const filePath = resolvePath(args[0]);
-        const content = FILE_CONTENTS[filePath];
-        if (content) return { output: content, type: "output" };
+        const content = files[filePath];
+        if (content !== undefined) return { output: content, type: "output" };
         return { output: `cat: ${args[0]}: No such file or directory`, type: "error" };
       }
 
@@ -161,8 +364,8 @@ export default function TerminalView({
         if (args.length === 0) return { output: "head: missing file operand", type: "error" };
         const file = args.find((a) => !a.startsWith("-")) || "";
         const filePath = resolvePath(file);
-        const content = FILE_CONTENTS[filePath];
-        if (content) {
+        const content = files[filePath];
+        if (content !== undefined) {
           const lineCount = args.includes("-n") ? parseInt(args[args.indexOf("-n") + 1]) || 3 : 3;
           return { output: content.split("\n").slice(0, lineCount).join("\n"), type: "output" };
         }
@@ -173,8 +376,8 @@ export default function TerminalView({
         if (args.length === 0) return { output: "tail: missing file operand", type: "error" };
         const file = args.find((a) => !a.startsWith("-")) || "";
         const filePath = resolvePath(file);
-        const content = FILE_CONTENTS[filePath];
-        if (content) {
+        const content = files[filePath];
+        if (content !== undefined) {
           const lineCount = args.includes("-n") ? parseInt(args[args.indexOf("-n") + 1]) || 3 : 3;
           const allLines = content.split("\n");
           return { output: allLines.slice(-lineCount).join("\n"), type: "output" };
@@ -183,6 +386,20 @@ export default function TerminalView({
       }
 
       case "echo": {
+        const appendRedirectIndex = args.findIndex((arg) => arg === ">>");
+        const redirectIndex = args.findIndex((arg) => arg === ">");
+        if (appendRedirectIndex !== -1 || redirectIndex !== -1) {
+          const index = appendRedirectIndex !== -1 ? appendRedirectIndex : redirectIndex;
+          const destination = args[index + 1];
+          if (!destination) return { output: "echo: missing redirect target", type: "error" };
+          const text = args
+            .slice(0, index)
+            .join(" ")
+            .replace(/\$HOME/g, resolvePath("~"))
+            .replace(/\$USER/g, "user");
+          const write = writeRedirectedFile(resolvePath(destination), text, appendRedirectIndex !== -1);
+          return write.ok ? { output: "", type: "success" } : { output: `echo: ${write.error}`, type: "error" };
+        }
         const text = args.join(" ").replace(/\$HOME/g, "/home/user").replace(/\$USER/g, "user");
         return { output: text, type: "output" };
       }
@@ -192,23 +409,38 @@ export default function TerminalView({
 
       case "mkdir":
         if (args.length === 0) return { output: "mkdir: missing operand", type: "error" };
-        return { output: "", type: "success" };
+        {
+          const result = createDirectory(resolvePath(args[0]));
+          return result.ok ? { output: "", type: "success" } : { output: result.error, type: "error" };
+        }
 
       case "touch":
         if (args.length === 0) return { output: "touch: missing file operand", type: "error" };
-        return { output: "", type: "success" };
+        {
+          const result = createFile(resolvePath(args[0]));
+          return result.ok ? { output: "", type: "success" } : { output: result.error, type: "error" };
+        }
 
       case "rm":
         if (args.length === 0) return { output: "rm: missing operand", type: "error" };
-        return { output: "", type: "success" };
+        {
+          const result = removePath(resolvePath(args[0]));
+          return result.ok ? { output: "", type: "success" } : { output: result.error, type: "error" };
+        }
 
       case "cp":
         if (args.length < 2) return { output: "cp: missing destination file operand", type: "error" };
-        return { output: "", type: "success" };
+        {
+          const result = copyFile(resolvePath(args[0]), resolvePath(args[1]));
+          return result.ok ? { output: "", type: "success" } : { output: result.error, type: "error" };
+        }
 
       case "mv":
         if (args.length < 2) return { output: "mv: missing destination file operand", type: "error" };
-        return { output: "", type: "success" };
+        {
+          const result = moveFile(resolvePath(args[0]), resolvePath(args[1]));
+          return result.ok ? { output: "", type: "success" } : { output: result.error, type: "error" };
+        }
 
       case "chmod":
         if (args.length < 2) return { output: "chmod: missing operand", type: "error" };
@@ -216,20 +448,52 @@ export default function TerminalView({
 
       case "grep": {
         if (args.length < 2) return { output: "grep: missing operand", type: "error" };
-        return { output: "Pattern matched in file", type: "output" };
+        const pattern = args[0];
+        const file = args[1];
+        const content = files[resolvePath(file)];
+        if (content === undefined) return { output: `grep: ${file}: No such file or directory`, type: "error" };
+        const matches = content
+          .split("\n")
+          .filter((line) => line.toLowerCase().includes(pattern.toLowerCase()));
+        return { output: matches.join("\n") || "", type: "output" };
       }
 
       case "wc": {
         if (args.length === 0) return { output: "wc: missing operand", type: "error" };
-        return { output: "42 128 1024 " + (args.find((a) => !a.startsWith("-")) || ""), type: "output" };
+        const file = args.find((a) => !a.startsWith("-")) || "";
+        const content = files[resolvePath(file)];
+        if (content === undefined) return { output: `wc: ${file}: No such file or directory`, type: "error" };
+        const lines = content.split("\n").length;
+        const words = content.trim() ? content.trim().split(/\s+/).length : 0;
+        const chars = content.length;
+        if (args.includes("-l")) {
+          return { output: `${lines} ${file}`, type: "output" };
+        }
+        return { output: `${lines} ${words} ${chars} ${file}`, type: "output" };
       }
 
       case "sort":
         if (args.length === 0) return { output: "sort: missing operand", type: "error" };
-        return { output: "alice\nbob\ncharlie\ndave\neve", type: "output" };
+        {
+          const file = args.find((a) => !a.startsWith("-")) || "";
+          const content = files[resolvePath(file)];
+          if (content === undefined) return { output: `sort: ${file}: No such file or directory`, type: "error" };
+          const sorted = [...content.split("\n")].sort();
+          if (args.includes("-r")) sorted.reverse();
+          return { output: sorted.join("\n"), type: "output" };
+        }
 
       case "find":
-        return { output: "./file1.txt\n./dir/file2.txt\n./notes.txt", type: "output" };
+        {
+          const startPath = args[0] && !args[0].startsWith("-") ? resolvePath(args[0]) : cwd;
+          const nameIndex = args.findIndex((arg) => arg === "-name");
+          const pattern = nameIndex !== -1 ? args[nameIndex + 1]?.replace(/^['"]|['"]$/g, "") : undefined;
+          const allPaths = [...Object.keys(directories), ...Object.keys(files)]
+            .filter((path) => path.startsWith(startPath) && path !== startPath)
+            .filter((path) => (pattern ? getBaseName(path).match(new RegExp(`^${pattern.replace(/\./g, "\\.").replace(/\*/g, ".*")}$`)) : true))
+            .map((path) => (path.startsWith(cwd) ? `.${path.slice(cwd.length) || "/"}` : path));
+          return { output: allPaths.join("\n"), type: "output" };
+        }
 
       case "man":
         if (args.length === 0) return { output: "What manual page do you want?", type: "error" };
@@ -273,7 +537,8 @@ export default function TerminalView({
     const newLines: TerminalLine[] = [...lines];
     newLines.push({ id: generateId(), type: "input", text: `${getPrompt()} ${trimmed}` });
 
-    const result = commandHandler?.(trimmed) ?? processCommand(trimmed);
+    const result =
+      commandHandler?.(trimmed, { runDefaultCommand: processCommand }) ?? processCommand(trimmed);
     if (result.output) {
       newLines.push({ id: generateId(), type: result.type, text: result.output });
     }

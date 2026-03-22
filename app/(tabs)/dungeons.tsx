@@ -85,7 +85,7 @@ export default function Dungeons() {
   const [currentStep, setCurrentStep] = useState(0);
   const [showComplete, setShowComplete] = useState(false);
 
-  function handleCommand(cmd: string) {
+  function handleCommand(cmd: string, helpers: { runDefaultCommand: (cmd: string) => { output: string; type: "output" | "error" | "success" } }) {
     if (!activeLesson) return { output: "", type: "output" as const };
     const step = activeLesson.steps[currentStep];
     if (!step) return { output: "", type: "output" as const };
@@ -96,7 +96,7 @@ export default function Dungeons() {
     );
 
     if (acceptedCommands.includes(trimmed.replace(/\s+/g, " "))) {
-      const output = step.output;
+      const defaultResult = helpers.runDefaultCommand(cmd);
       if (currentStep < activeLesson.steps.length - 1) {
         setTimeout(() => setCurrentStep((s) => s + 1), 500);
       } else {
@@ -108,8 +108,8 @@ export default function Dungeons() {
         setTimeout(() => setShowComplete(true), 500);
       }
       return {
-        output: output,
-        type: "output" as const,
+        output: step.output || defaultResult.output,
+        type: step.output ? "output" as const : defaultResult.type,
         extraLines: [
           {
             id: "",
