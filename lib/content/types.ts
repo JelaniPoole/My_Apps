@@ -20,6 +20,12 @@ export interface LessonStep {
   whyItWorks?: string;
 }
 
+export interface TerminalSeed {
+  cwd: string;
+  directories: Record<string, string[]>;
+  files: Record<string, string>;
+}
+
 export interface Lesson {
   id: string;
   title: string;
@@ -31,6 +37,7 @@ export interface Lesson {
   steps: LessonStep[];
   difficulty: "E" | "D" | "C" | "B" | "A";
   dungeonName: string;
+  terminalSeed?: TerminalSeed;
 }
 
 export interface Challenge {

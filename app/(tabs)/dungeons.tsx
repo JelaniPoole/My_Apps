@@ -201,7 +201,12 @@ export default function Dungeons() {
         </View>
 
         <View style={styles.terminalWrap}>
-          <TerminalView commandHandler={handleCommand} />
+          <TerminalView
+            commandHandler={handleCommand}
+            initialCwd={activeLesson.terminalSeed?.cwd}
+            initialDirectories={activeLesson.terminalSeed?.directories}
+            initialFiles={activeLesson.terminalSeed?.files}
+          />
         </View>
 
         <Modal visible={showComplete} transparent animationType="fade">

@@ -1,4 +1,43 @@
-import type { Lesson } from "./types";
+import type { Lesson, TerminalSeed } from "./types";
+
+const BASE_DIRECTORIES: Record<string, string[]> = {
+  "/": ["home", "etc", "var", "tmp", "usr"],
+  "/home": ["hunter"],
+  "/home/hunter": [],
+  "/etc": [],
+  "/var": [],
+  "/tmp": [],
+  "/usr": [],
+};
+
+function createSeed({
+  cwd = "/home/hunter",
+  directories = {},
+  files = {},
+}: {
+  cwd?: string;
+  directories?: Record<string, string[]>;
+  files?: Record<string, string>;
+}): TerminalSeed {
+  return {
+    cwd,
+    directories: {
+      ...BASE_DIRECTORIES,
+      ...directories,
+    },
+    files,
+  };
+}
+
+function withEntries(seed: TerminalSeed, path: string, entries: string[]) {
+  return {
+    ...seed,
+    directories: {
+      ...seed.directories,
+      [path]: entries,
+    },
+  };
+}
 
 export const lessons: Lesson[] = [
   {
@@ -11,6 +50,7 @@ export const lessons: Lesson[] = [
     statReward: { type: "AGI", amount: 2 },
     difficulty: "E",
     dungeonName: "Tutorial Caves",
+    terminalSeed: withEntries(createSeed(), "/home/hunter", ["sword", "shield", "potion", "README.md"]),
     steps: [
       {
         concept: "Find your current location",
@@ -60,6 +100,7 @@ export const lessons: Lesson[] = [
     statReward: { type: "STR", amount: 2 },
     difficulty: "E",
     dungeonName: "Forge Depths",
+    terminalSeed: withEntries(createSeed(), "/home/hunter", []),
     steps: [
       {
         concept: "Create an empty file",
@@ -109,6 +150,7 @@ export const lessons: Lesson[] = [
     statReward: { type: "STR", amount: 3 },
     difficulty: "D",
     dungeonName: "Inventory Vault",
+    terminalSeed: withEntries(createSeed(), "/home/hunter", ["sword", "potion"]),
     steps: [
       {
         concept: "Copy a file",
@@ -158,6 +200,18 @@ export const lessons: Lesson[] = [
     statReward: { type: "INT", amount: 2 },
     difficulty: "D",
     dungeonName: "Library Ruins",
+    terminalSeed: createSeed({
+      directories: {
+        "/home/hunter": ["quest.log", "maps", "enemies.txt"],
+        "/home/hunter/maps": ["world.txt"],
+      },
+      files: {
+        "/home/hunter/quest.log": "Kill 5 goblins\nFind lost relic",
+        "/home/hunter/maps/world.txt": "Forest Entrance\nGoblin Camp\nMountain Pass\nAncient Ruins",
+        "/home/hunter/enemies.txt":
+          "goblin\norc\nskeleton\nmage\nwolf\nslime\ngoblin shaman\nbandit\norc captain\ndrake\nslime king\nlich",
+      },
+    }),
     steps: [
       {
         concept: "Read an entire file",
@@ -207,6 +261,15 @@ export const lessons: Lesson[] = [
     statReward: { type: "INT", amount: 3 },
     difficulty: "D",
     dungeonName: "Enemy Archives",
+    terminalSeed: createSeed({
+      directories: {
+        "/home/hunter": ["enemies.txt"],
+      },
+      files: {
+        "/home/hunter/enemies.txt":
+          "goblin x3\norc raider\norc captain\ngoblin shaman\nslime\norc brute\norc scout\ngoblin king",
+      },
+    }),
     steps: [
       {
         concept: "Search for matching text",
@@ -244,6 +307,17 @@ export const lessons: Lesson[] = [
     statReward: { type: "INT", amount: 4 },
     difficulty: "C",
     dungeonName: "Pipeline Labyrinth",
+    terminalSeed: createSeed({
+      directories: {
+        "/home/hunter": ["quest.log", "enemies.txt", "shield", "sword"],
+      },
+      files: {
+        "/home/hunter/quest.log": "Find relic",
+        "/home/hunter/enemies.txt": "goblin\norc\nskeleton",
+        "/home/hunter/shield": "bronze shield",
+        "/home/hunter/sword": "iron sword",
+      },
+    }),
     steps: [
       {
         concept: "Filter command output",
@@ -293,6 +367,14 @@ export const lessons: Lesson[] = [
     statReward: { type: "DEF", amount: 4 },
     difficulty: "C",
     dungeonName: "Security Crypt",
+    terminalSeed: createSeed({
+      directories: {
+        "/home/hunter": ["hunt.sh"],
+      },
+      files: {
+        "/home/hunter/hunt.sh": "#!/bin/bash\necho Hunting...",
+      },
+    }),
     steps: [
       {
         concept: "Identify the current user",
@@ -330,6 +412,7 @@ export const lessons: Lesson[] = [
     statReward: { type: "VIT", amount: 5 },
     difficulty: "C",
     dungeonName: "Process Dungeon",
+    terminalSeed: withEntries(createSeed(), "/home/hunter", ["process.log"]),
     steps: [
       {
         concept: "Inspect running processes",
@@ -367,6 +450,17 @@ export const lessons: Lesson[] = [
     statReward: { type: "VIT", amount: 4 },
     difficulty: "C",
     dungeonName: "Resource Vault",
+    terminalSeed: createSeed({
+      directories: {
+        "/home/hunter": ["maps", "logs"],
+        "/home/hunter/maps": ["world.txt"],
+        "/home/hunter/logs": ["battle.log"],
+      },
+      files: {
+        "/home/hunter/maps/world.txt": "zone data",
+        "/home/hunter/logs/battle.log": "fight data",
+      },
+    }),
     steps: [
       {
         concept: "Check disk usage",
@@ -404,6 +498,15 @@ export const lessons: Lesson[] = [
     statReward: { type: "INT", amount: 6 },
     difficulty: "B",
     dungeonName: "Repository Ruins",
+    terminalSeed: createSeed({
+      directories: {
+        "/home/hunter": ["quest.log", ".git"],
+        "/home/hunter/.git": [],
+      },
+      files: {
+        "/home/hunter/quest.log": "Updated quest file",
+      },
+    }),
     steps: [
       {
         concept: "Check the working tree",
@@ -441,6 +544,17 @@ export const lessons: Lesson[] = [
     statReward: { type: "AGI", amount: 3 },
     difficulty: "D",
     dungeonName: "Switchback Pass",
+    terminalSeed: createSeed({
+      cwd: "/home/hunter/projects/app",
+      directories: {
+        "/home/hunter": ["projects"],
+        "/home/hunter/projects": ["app"],
+        "/home/hunter/projects/app": ["README.md"],
+      },
+      files: {
+        "/home/hunter/projects/app/README.md": "Path practice",
+      },
+    }),
     steps: [
       {
         concept: "Move up one directory",
@@ -478,6 +592,15 @@ export const lessons: Lesson[] = [
     statReward: { type: "INT", amount: 3 },
     difficulty: "D",
     dungeonName: "Logwatch Keep",
+    terminalSeed: createSeed({
+      directories: {
+        "/home/hunter": ["battle.log"],
+      },
+      files: {
+        "/home/hunter/battle.log":
+          "Entering dungeon\nScouting chamber\nBoss enraged\nPotion consumed\nVictory achieved",
+      },
+    }),
     steps: [
       {
         concept: "Read the last lines of a file",
@@ -503,6 +626,7 @@ export const lessons: Lesson[] = [
     statReward: { type: "INT", amount: 4 },
     difficulty: "C",
     dungeonName: "Archive Hall",
+    terminalSeed: withEntries(createSeed(), "/home/hunter", []),
     steps: [
       {
         concept: "Write generated text to a file",
@@ -540,6 +664,7 @@ export const lessons: Lesson[] = [
     statReward: { type: "VIT", amount: 5 },
     difficulty: "C",
     dungeonName: "Signal Ridge",
+    terminalSeed: withEntries(createSeed(), "/home/hunter", []),
     steps: [
       {
         concept: "Test whether a host is reachable",
@@ -577,6 +702,15 @@ export const lessons: Lesson[] = [
     statReward: { type: "INT", amount: 6 },
     difficulty: "B",
     dungeonName: "Diff Bastion",
+    terminalSeed: createSeed({
+      directories: {
+        "/home/hunter": ["quest.log", ".git"],
+        "/home/hunter/.git": [],
+      },
+      files: {
+        "/home/hunter/quest.log": "Defeat the cave troll",
+      },
+    }),
     steps: [
       {
         concept: "Compare current changes",
@@ -614,6 +748,19 @@ export const lessons: Lesson[] = [
     statReward: { type: "AGI", amount: 18 },
     difficulty: "A",
     dungeonName: "Binary Citadel",
+    terminalSeed: createSeed({
+      directories: {
+        "/home/hunter": ["lib", "scripts", "tmp"],
+        "/home/hunter/lib": ["utils.py"],
+        "/home/hunter/scripts": ["bot.py"],
+        "/home/hunter/tmp": ["cache.tmp"],
+      },
+      files: {
+        "/home/hunter/lib/utils.py": "print('utils')",
+        "/home/hunter/scripts/bot.py": "print('bot')",
+        "/home/hunter/tmp/cache.tmp": "temp",
+      },
+    }),
     steps: [
       {
         concept: "Search recursively for files",
