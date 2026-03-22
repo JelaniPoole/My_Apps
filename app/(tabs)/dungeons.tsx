@@ -86,14 +86,16 @@ export default function Dungeons() {
   const [showComplete, setShowComplete] = useState(false);
 
   function handleCommand(cmd: string) {
-    if (!activeLesson) return "";
+    if (!activeLesson) return { output: "", type: "output" as const };
     const step = activeLesson.steps[currentStep];
-    if (!step) return "";
+    if (!step) return { output: "", type: "output" as const };
 
     const trimmed = cmd.trim().toLowerCase();
-    const expected = step.expectedCommand.toLowerCase();
+    const acceptedCommands = (step.acceptedCommands ?? [step.expectedCommand]).map((command) =>
+      command.trim().replace(/\s+/g, " ").toLowerCase()
+    );
 
-    if (trimmed === expected) {
+    if (acceptedCommands.includes(trimmed.replace(/\s+/g, " "))) {
       const output = step.output;
       if (currentStep < activeLesson.steps.length - 1) {
         setTimeout(() => setCurrentStep((s) => s + 1), 500);
@@ -105,9 +107,15 @@ export default function Dungeons() {
         }
         setTimeout(() => setShowComplete(true), 500);
       }
-      return output ? output + "\n" + step.successMessage : step.successMessage;
+      return {
+        output: output ? output + "\n" + step.successMessage : step.successMessage,
+        type: "success" as const,
+      };
     }
-    return `Command not recognized. ${step.hint}`;
+    return {
+      output: `Command not recognized. ${step.hint}`,
+      type: "error" as const,
+    };
   }
 
   function closeDungeon() {
