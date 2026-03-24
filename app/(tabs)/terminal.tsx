@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Platform, KeyboardAvoidingView, Keyboard } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { useProgress } from "@/lib/progress-context";
@@ -9,10 +8,10 @@ import TerminalView from "@/components/TerminalView";
 
 export default function TrainingGround() {
   const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
   const { addTerminalCommand } = useProgress();
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const webTop = Platform.OS === "web" ? 67 : 0;
+  const estimatedTabBarHeight = Platform.OS === "web" ? 0 : insets.bottom + 64;
 
   useEffect(() => {
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
@@ -45,7 +44,7 @@ export default function TrainingGround() {
                 ? 18
                 : isKeyboardVisible
                 ? 0
-                : Math.max(tabBarHeight - insets.bottom + 8, 12),
+                : Math.max(estimatedTabBarHeight - insets.bottom + 8, 12),
           },
         ]}
       >

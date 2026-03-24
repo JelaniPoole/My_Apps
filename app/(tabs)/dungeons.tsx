@@ -10,7 +10,6 @@ import {
   KeyboardAvoidingView,
   Keyboard,
 } from "react-native";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -82,7 +81,6 @@ function DungeonCard({
 
 export default function Dungeons() {
   const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
   const { completedLessons, completeLesson, addXp, addStat } = useProgress();
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
@@ -148,6 +146,7 @@ export default function Dungeons() {
   }
 
   const webTop = Platform.OS === "web" ? 67 : 0;
+  const estimatedTabBarHeight = Platform.OS === "web" ? 0 : insets.bottom + 64;
 
   if (activeLesson) {
     const step = activeLesson.steps[currentStep];
@@ -235,7 +234,7 @@ export default function Dungeons() {
                     ? 12
                     : isKeyboardVisible
                     ? 0
-                    : Math.max(tabBarHeight - insets.bottom + 8, 12),
+                    : Math.max(estimatedTabBarHeight - insets.bottom + 8, 12),
               },
             ]}
           >
