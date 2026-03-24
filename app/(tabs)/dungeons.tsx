@@ -16,7 +16,7 @@ import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
 import Colors from "@/constants/colors";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useProgress } from "@/lib/progress-context";
-import { lessons, Lesson } from "@/lib/linux-data";
+import { orderedLessons, Lesson } from "@/lib/linux-data";
 import TerminalView from "@/components/TerminalView";
 
 const diffColors: Record<string, string> = {
@@ -86,6 +86,7 @@ export default function Dungeons() {
   const [currentStep, setCurrentStep] = useState(0);
   const [showComplete, setShowComplete] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [listMode, setListMode] = useState<"active" | "completed">("active");
 
   useEffect(() => {
     const showSub = Keyboard.addListener("keyboardDidShow", () => setIsKeyboardVisible(true));
@@ -144,6 +145,9 @@ export default function Dungeons() {
   }
 
   const webTop = Platform.OS === "web" ? 67 : 0;
+  const activeLessons = orderedLessons.filter((lesson) => !completedLessons.includes(lesson.id));
+  const clearedLessons = orderedLessons.filter((lesson) => completedLessons.includes(lesson.id));
+  const visibleLessons = listMode === "active" ? activeLessons : clearedLessons;
 
   if (activeLesson) {
     const step = activeLesson.steps[currentStep];
@@ -278,21 +282,96 @@ export default function Dungeons() {
           <Ionicons name="map" size={22} color={Colors.primary} />
           <Text style={styles.pageTitle}>Dungeons</Text>
         </View>
-        <Text style={styles.pageSubtitle}>Clear dungeons to earn XP and level up your stats</Text>
+        <Text style={styles.pageSubtitle}>Follow the lesson path, then revisit cleared dungeons whenever you want.</Text>
 
-        {lessons.map((lesson, idx) => (
-          <Animated.View key={lesson.id} entering={FadeInDown.duration(400).delay(idx * 80)}>
-            <DungeonCard
-              lesson={lesson}
-              cleared={completedLessons.includes(lesson.id)}
-              onEnter={() => {
-                setActiveLesson(lesson);
-                setCurrentStep(0);
-                setShowComplete(false);
-              }}
+        <View style={styles.segmentWrap}>
+          <Pressable
+            onPress={() => setListMode("active")}
+            style={[
+              styles.segmentButton,
+              listMode === "active" && styles.segmentButtonActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                listMode === "active" && styles.segmentTextActive,
+              ]}
+            >
+              Continue
+            </Text>
+            <Text
+              style={[
+                styles.segmentCount,
+                listMode === "active" && styles.segmentCountActive,
+              ]}
+            >
+              {activeLessons.length}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setListMode("completed")}
+            style={[
+              styles.segmentButton,
+              listMode === "completed" && styles.segmentButtonActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                listMode === "completed" && styles.segmentTextActive,
+              ]}
+            >
+              Completed
+            </Text>
+            <Text
+              style={[
+                styles.segmentCount,
+                listMode === "completed" && styles.segmentCountActive,
+              ]}
+            >
+              {clearedLessons.length}
+            </Text>
+          </Pressable>
+        </View>
+
+        {listMode === "active" ? (
+          <Text style={styles.sectionHint}>Unfinished lessons stay here in learning order.</Text>
+        ) : (
+          <Text style={styles.sectionHint}>Cleared lessons live here so the main path stays clean.</Text>
+        )}
+
+        {visibleLessons.length ? (
+          visibleLessons.map((lesson, idx) => (
+            <Animated.View key={lesson.id} entering={FadeInDown.duration(400).delay(idx * 80)}>
+              <DungeonCard
+                lesson={lesson}
+                cleared={completedLessons.includes(lesson.id)}
+                onEnter={() => {
+                  setActiveLesson(lesson);
+                  setCurrentStep(0);
+                  setShowComplete(false);
+                }}
+              />
+            </Animated.View>
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <Ionicons
+              name={listMode === "active" ? "sparkles" : "checkmark-done-circle"}
+              size={26}
+              color={listMode === "active" ? Colors.accent : Colors.success}
             />
-          </Animated.View>
-        ))}
+            <Text style={styles.emptyTitle}>
+              {listMode === "active" ? "All current lessons cleared" : "No completed lessons yet"}
+            </Text>
+            <Text style={styles.emptyText}>
+              {listMode === "active"
+                ? "Switch to Completed to replay a cleared dungeon, or add new lesson packs next."
+                : "Clear a dungeon and it will move here automatically."}
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -305,6 +384,74 @@ const styles = StyleSheet.create({
   pageHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 20, marginTop: 16 },
   pageTitle: { color: Colors.text, fontSize: 24, fontWeight: "800" },
   pageSubtitle: { color: Colors.textSecondary, fontSize: 14, marginHorizontal: 20, marginTop: 4, marginBottom: 16 },
+  segmentWrap: {
+    flexDirection: "row",
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    borderRadius: 16,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 4,
+  },
+  segmentButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 12,
+    paddingVertical: 10,
+  },
+  segmentButtonActive: {
+    backgroundColor: Colors.background,
+  },
+  segmentText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  segmentTextActive: {
+    color: Colors.text,
+  },
+  segmentCount: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  segmentCountActive: {
+    color: Colors.accent,
+  },
+  sectionHint: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 14,
+  },
+  emptyState: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 20,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  emptyTitle: {
+    color: Colors.text,
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 10,
+  },
+  emptyText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    textAlign: "center",
+    lineHeight: 20,
+    marginTop: 6,
+  },
 
   dungeonCard: { marginHorizontal: 16, marginBottom: 12, borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: Colors.border },
   dungeonGradient: { padding: 16 },

@@ -1,362 +1,748 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  Modal,
-  TextInput,
-  Platform,
+  Keyboard,
   KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
-import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
-import Colors from "@/constants/colors";
-import { useProgress } from "@/lib/progress-context";
-import { challenges, Challenge } from "@/lib/linux-data";
 
-const diffColors: Record<string, string> = {
-  E: Colors.rankE,
-  D: Colors.rankD,
-  C: Colors.rankC,
-  B: Colors.rankB,
-  A: Colors.rankA,
+import { orderedChallenges } from "@/lib/linux-data";
+import { useProgress } from "@/lib/progress-context";
+
+const colors = {
+  background: "#0C0D14",
+  card: "#151625",
+  cardAlt: "#10131C",
+  border: "#2B2D4A",
+  text: "#F5F7FF",
+  subtext: "#8D90B5",
+  accent: "#64D2FF",
+  success: "#4ADE80",
+  danger: "#FF5D73",
+  gold: "#FFC83D",
 };
 
-function BossCard({
-  challenge,
-  defeated,
-  onFight,
-}: {
-  challenge: Challenge;
-  defeated: boolean;
-  onFight: () => void;
-}) {
-  return (
-    <Pressable onPress={onFight} style={({ pressed }) => [styles.bossCard, pressed && styles.pressed]}>
-      <LinearGradient
-        colors={[defeated ? Colors.success + "10" : diffColors[challenge.difficulty] + "12", Colors.surface]}
-        style={styles.bossGradient}
-      >
-        <View style={styles.bossTop}>
-          <View style={[styles.bossIcon, { borderColor: defeated ? Colors.success + "60" : diffColors[challenge.difficulty] + "60" }]}>
-            <Ionicons
-              name={defeated ? "checkmark-circle" : (challenge.icon as any)}
-              size={22}
-              color={defeated ? Colors.success : diffColors[challenge.difficulty]}
-            />
-          </View>
-          <View style={styles.bossInfo}>
-            <Text style={styles.bossName}>{challenge.bossName}</Text>
-            <Text style={styles.bossSubtitle}>{challenge.title}</Text>
-          </View>
-          <View style={[styles.diffBadge, { backgroundColor: diffColors[challenge.difficulty] + "20" }]}>
-            <Text style={[styles.diffText, { color: diffColors[challenge.difficulty] }]}>{challenge.difficulty}</Text>
-          </View>
-        </View>
-        <View style={styles.bossFooter}>
-          <View style={styles.rewardRow}>
-            <Ionicons name="star" size={12} color={Colors.xpGold} />
-            <Text style={styles.rewardText}>{challenge.xpReward} XP</Text>
-          </View>
-          <View style={styles.rewardRow}>
-            <Text style={[styles.rewardText, { color: Colors["stat" + challenge.statReward.type as keyof typeof Colors] as string }]}>
-              +{challenge.statReward.amount} {challenge.statReward.type}
-            </Text>
-          </View>
-        </View>
-      </LinearGradient>
-    </Pressable>
-  );
-}
+type RaidChallenge = (typeof orderedChallenges)[number];
+
+const rankColors: Record<string, string> = {
+  E: "#7CFF6B",
+  D: "#64D2FF",
+  C: "#FFC83D",
+  B: "#FF8A5B",
+  A: "#FF5D73",
+  S: "#FF5D73",
+};
 
 export default function BossRaids() {
-  const insets = useSafeAreaInsets();
-  const { completedChallenges, completeChallenge, addXp, addStat } = useProgress();
-  const [activeChallenge, setActiveChallenge] = useState<Challenge | null>(null);
+  const progressContext = useProgress();
+  const progress = progressContext?.progress ?? {
+    completedChallenges: [] as string[],
+  };
+  const completeChallenge =
+    progressContext?.completeChallenge ?? (() => undefined);
+  const addXP = progressContext?.addXP ?? (() => undefined);
+
+  const [listMode, setListMode] = useState<"active" | "completed">("active");
+  const [activeChallenge, setActiveChallenge] = useState<RaidChallenge | null>(
+    null,
+  );
   const [input, setInput] = useState("");
   const [feedback, setFeedback] = useState("");
   const [hintIdx, setHintIdx] = useState(0);
   const [showVictory, setShowVictory] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
-  function handleSubmit() {
-    if (!activeChallenge || !input.trim()) return;
+  const activeChallenges = useMemo(
+    () =>
+      orderedChallenges.filter(
+        (challenge) => !progress.completedChallenges.includes(challenge.id),
+      ),
+    [progress.completedChallenges],
+  );
 
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  const completedChallenges = useMemo(
+    () =>
+      orderedChallenges.filter((challenge) =>
+        progress.completedChallenges.includes(challenge.id),
+      ),
+    [progress.completedChallenges],
+  );
 
-    const trimmed = input.trim();
-    const match = activeChallenge.acceptedCommands.some(
-      (cmd) => cmd.toLowerCase() === trimmed.toLowerCase()
-    );
+  const visibleChallenges =
+    listMode === "active" ? activeChallenges : completedChallenges;
 
-    if (match) {
-      if (!completedChallenges.includes(activeChallenge.id)) {
-        addXp(activeChallenge.xpReward);
-        addStat(activeChallenge.statReward.type, activeChallenge.statReward.amount);
-        completeChallenge(activeChallenge.id);
-      }
-      setShowVictory(true);
-    } else {
-      setFeedback("That's not the right command. Try again!");
-    }
+  const openChallenge = (challenge: RaidChallenge) => {
+    setActiveChallenge(challenge);
     setInput("");
-  }
+    setFeedback("");
+    setHintIdx(0);
+    setShowVictory(false);
+  };
 
-  function showHint() {
-    if (!activeChallenge) return;
-    const hints = activeChallenge.hints;
-    setFeedback(hints[Math.min(hintIdx, hints.length - 1)]);
-    setHintIdx((h) => h + 1);
-  }
-
-  function closeBattle() {
+  const closeChallenge = () => {
     setActiveChallenge(null);
     setInput("");
     setFeedback("");
     setHintIdx(0);
     setShowVictory(false);
-  }
+  };
 
-  const webTop = Platform.OS === "web" ? 67 : 0;
+  const getAcceptedCommands = (challenge: RaidChallenge) => {
+    const variants = (challenge as any).acceptedCommands;
+    if (Array.isArray(variants) && variants.length > 0) {
+      return variants as string[];
+    }
+
+    const fallback =
+      (challenge as any).solution ??
+      (challenge as any).command ??
+      (challenge as any).answer;
+
+    return typeof fallback === "string" ? [fallback] : [];
+  };
+
+  const getHints = (challenge: RaidChallenge) => {
+    const hints = (challenge as any).hints;
+    return Array.isArray(hints) ? (hints as string[]) : [];
+  };
+
+  const getReward = (challenge: RaidChallenge) => {
+    return (
+      (challenge as any).xpReward ??
+      (challenge as any).reward ??
+      (challenge as any).xp ??
+      50
+    );
+  };
+
+  const getRankColor = (difficulty?: string) => {
+    if (!difficulty) {
+      return colors.gold;
+    }
+
+    return rankColors[difficulty] ?? colors.gold;
+  };
+
+  const submitChallenge = () => {
+    if (!activeChallenge) {
+      return;
+    }
+
+    const normalized = input.trim().toLowerCase();
+    if (!normalized) {
+      setFeedback("Type a command before attacking.");
+      return;
+    }
+
+    const accepted = getAcceptedCommands(activeChallenge).map((command) =>
+      command.trim().toLowerCase(),
+    );
+
+    if (accepted.includes(normalized)) {
+      if (!progress.completedChallenges.includes(activeChallenge.id)) {
+        completeChallenge(activeChallenge.id);
+        addXP(getReward(activeChallenge));
+      }
+      setFeedback("Raid cleared.");
+      setShowVictory(true);
+      return;
+    }
+
+    const hints = getHints(activeChallenge);
+    if (hints.length > 0) {
+      const nextHint = Math.min(hintIdx + 1, hints.length - 1);
+      setHintIdx(nextHint);
+      setFeedback(hints[nextHint] ?? "That command missed. Try again.");
+      return;
+    }
+
+    setFeedback("That command missed. Check the clue and try again.");
+  };
+
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, () => {
+      setKeyboardVisible(true);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardVisible(false);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   return (
     <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 90, paddingTop: insets.top + webTop }}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
       >
-        <View style={styles.pageHeader}>
-          <Ionicons name="skull" size={22} color={Colors.error} />
-          <Text style={styles.pageTitle}>Boss Raids</Text>
+        <View style={styles.header}>
+          <Text style={styles.title}>Raid Bosses</Text>
+          <Text style={styles.subtitle}>Defeat elite command encounters.</Text>
         </View>
-        <Text style={styles.pageSubtitle}>
-          Defeat bosses with the right Linux command
-        </Text>
 
-        <View style={styles.progressRow}>
-          <Text style={styles.progressText}>
-            {completedChallenges.length}/{challenges.length} defeated
-          </Text>
+        <View style={styles.progressCard}>
+          <View style={styles.progressRow}>
+            <Text style={styles.progressLabel}>Bosses Defeated</Text>
+            <Text style={styles.progressValue}>
+              {completedChallenges.length}/{orderedChallenges.length}
+            </Text>
+          </View>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${(completedChallenges.length / challenges.length) * 100}%` }]} />
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  width: `${Math.max(
+                    8,
+                    (completedChallenges.length /
+                      Math.max(orderedChallenges.length, 1)) *
+                      100,
+                  )}%`,
+                },
+              ]}
+            />
           </View>
         </View>
 
-        {challenges.map((ch, idx) => (
-          <Animated.View key={ch.id} entering={FadeInDown.duration(400).delay(idx * 60)}>
-            <BossCard
-              challenge={ch}
-              defeated={completedChallenges.includes(ch.id)}
-              onFight={() => {
-                setActiveChallenge(ch);
-                setInput("");
-                setFeedback("");
-                setHintIdx(0);
-                setShowVictory(false);
-              }}
-            />
-          </Animated.View>
-        ))}
+        <View style={styles.segmentedControl}>
+          <TouchableOpacity
+            style={[
+              styles.segmentButton,
+              listMode === "active" && styles.segmentButtonActive,
+            ]}
+            onPress={() => setListMode("active")}
+          >
+            <Text
+              style={[
+                styles.segmentButtonText,
+                listMode === "active" && styles.segmentButtonTextActive,
+              ]}
+            >
+              Continue
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.segmentButton,
+              listMode === "completed" && styles.segmentButtonActive,
+            ]}
+            onPress={() => setListMode("completed")}
+          >
+            <Text
+              style={[
+                styles.segmentButtonText,
+                listMode === "completed" && styles.segmentButtonTextActive,
+              ]}
+            >
+              Completed
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {visibleChallenges.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>
+              {listMode === "active"
+                ? "All raids are cleared."
+                : "No completed raids yet."}
+            </Text>
+            <Text style={styles.emptyText}>
+              {listMode === "active"
+                ? "Replay cleared raids anytime from the Completed tab."
+                : "Finished raids will move here so the main list stays focused."}
+            </Text>
+          </View>
+        ) : null}
+
+        {visibleChallenges.map((challenge) => {
+          const cleared = progress.completedChallenges.includes(challenge.id);
+          const rankColor = getRankColor((challenge as any).difficulty);
+          return (
+            <TouchableOpacity
+              key={challenge.id}
+              style={styles.challengeCard}
+              activeOpacity={0.9}
+              onPress={() => openChallenge(challenge)}
+            >
+              <View style={styles.challengeTop}>
+                <View style={styles.challengeCopy}>
+                  <Text style={[styles.challengeRank, { color: rankColor }]}>
+                    Rank {(challenge as any).difficulty ?? "?"}
+                  </Text>
+                  <Text style={styles.challengeTitle}>{challenge.title}</Text>
+                </View>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    cleared && styles.statusBadgeComplete,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusText,
+                      cleared && styles.statusTextComplete,
+                    ]}
+                  >
+                    {cleared ? "Cleared" : "Open"}
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={styles.challengeDescription}>
+                {(challenge as any).description ??
+                  (challenge as any).objective ??
+                  "Use the correct Linux command to clear this raid."}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
-      <Modal visible={!!activeChallenge && !showVictory} transparent animationType="fade">
-        <KeyboardAvoidingView
-          style={styles.modalOverlay}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+      <Modal visible={!!activeChallenge} transparent animationType="slide">
+        <View
+          style={[
+            styles.modalBackdrop,
+            keyboardVisible && styles.modalBackdropKeyboard,
+          ]}
         >
-          <View style={styles.battleCard}>
-            <LinearGradient colors={[Colors.error + "20", Colors.surface]} style={styles.battleGradient}>
-              <View style={styles.battleHeader}>
-                <Text style={styles.battleBossName}>{activeChallenge?.bossName}</Text>
-                <Pressable onPress={closeBattle} hitSlop={16}>
-                  <Ionicons name="close" size={24} color={Colors.textMuted} />
-                </Pressable>
-              </View>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={0}
+            style={[
+              styles.modalAvoidingView,
+              keyboardVisible && styles.modalAvoidingViewKeyboard,
+            ]}
+          >
+            <View
+              style={[
+                styles.modalCard,
+                keyboardVisible && styles.modalCardKeyboard,
+              ]}
+            >
+              {activeChallenge ? (
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  bounces={false}
+                  keyboardShouldPersistTaps="handled"
+                  contentContainerStyle={styles.modalScrollContent}
+                >
+                  <Text
+                    style={[
+                      styles.modalRank,
+                      { color: getRankColor((activeChallenge as any).difficulty) },
+                    ]}
+                  >
+                    Rank {(activeChallenge as any).difficulty ?? "?"}
+                  </Text>
+                  <Text style={styles.modalTitle}>{activeChallenge.title}</Text>
+                  <Text style={styles.modalDescription}>
+                    {(activeChallenge as any).description ??
+                      (activeChallenge as any).objective ??
+                      "Defeat this raid with the right command."}
+                  </Text>
 
-              <View style={styles.battleTask}>
-                <Ionicons name="alert-circle" size={18} color={Colors.accent} />
-                <Text style={styles.battleTaskText}>{activeChallenge?.task}</Text>
-              </View>
-
-              {activeChallenge?.output ? (
-                <View style={styles.outputBox}>
-                  <Text style={styles.outputText}>{activeChallenge.output}</Text>
-                </View>
-              ) : null}
-
-              {feedback ? (
-                <View style={styles.feedbackBox}>
-                  <Text style={styles.feedbackText}>{feedback}</Text>
-                </View>
-              ) : null}
-
-              <View style={styles.inputRow}>
-                <Text style={styles.prompt}>$</Text>
-                <TextInput
-                  style={styles.battleInput}
-                  value={input}
-                  onChangeText={setInput}
-                  onSubmitEditing={handleSubmit}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoFocus
-                  placeholder="Enter command..."
-                  placeholderTextColor={Colors.textMuted}
-                  returnKeyType="send"
-                  blurOnSubmit={false}
-                  selectionColor={Colors.terminalGreen}
-                />
-              </View>
-
-              <View style={styles.battleActions}>
-                <Pressable style={styles.hintBtn} onPress={showHint}>
-                  <Ionicons name="bulb" size={18} color={Colors.warning} />
-                  <Text style={styles.hintText}>Hint</Text>
-                </Pressable>
-                <Pressable style={styles.attackBtn} onPress={handleSubmit}>
-                  <Ionicons name="flash" size={18} color={Colors.text} />
-                  <Text style={styles.attackText}>Attack</Text>
-                </Pressable>
-              </View>
-            </LinearGradient>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      <Modal visible={showVictory} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <Animated.View entering={FadeIn.duration(400)} style={styles.victoryCard}>
-            <LinearGradient colors={[Colors.xpGold + "30", Colors.surface]} style={styles.victoryGradient}>
-              <Ionicons name="trophy" size={48} color={Colors.xpGold} />
-              <Text style={styles.victoryTitle}>BOSS DEFEATED</Text>
-              <Text style={styles.victoryBoss}>{activeChallenge?.bossName}</Text>
-
-              <View style={styles.rewardsSection}>
-                <View style={styles.rewardItem}>
-                  <Ionicons name="star" size={20} color={Colors.xpGold} />
-                  <Text style={styles.rewardAmount}>+{activeChallenge?.xpReward} XP</Text>
-                </View>
-                {activeChallenge && (
-                  <View style={styles.rewardItem}>
-                    <Ionicons name="trending-up" size={20} color={Colors["stat" + activeChallenge.statReward.type as keyof typeof Colors] as string} />
-                    <Text style={[styles.rewardAmount, { color: Colors["stat" + activeChallenge.statReward.type as keyof typeof Colors] as string }]}>
-                      +{activeChallenge.statReward.amount} {activeChallenge.statReward.type}
+                  <View style={styles.contextCard}>
+                    <Text style={styles.contextLabel}>Encounter</Text>
+                    <Text style={styles.contextText}>
+                      This boss is testing whether you can pick the right Linux
+                      command for this situation, not just memorize a name.
+                    </Text>
+                    <Text style={styles.contextSubLabel}>What To Think About</Text>
+                    <Text style={styles.contextText}>
+                      Focus on what action the prompt is asking for, then choose
+                      the command that best matches that job.
                     </Text>
                   </View>
-                )}
-              </View>
 
-              <Pressable style={styles.continueBtn} onPress={closeBattle}>
-                <Text style={styles.continueBtnText}>Continue</Text>
-              </Pressable>
-            </LinearGradient>
-          </Animated.View>
+                  <View style={styles.hintCard}>
+                    <Text style={styles.hintLabel}>First Clue</Text>
+                    <Text style={styles.hintText}>
+                      {getHints(activeChallenge)[0] ??
+                        "Start from the command family that matches the task."}
+                    </Text>
+                  </View>
+
+                  {hintIdx > 0 && getHints(activeChallenge)[hintIdx] ? (
+                    <View style={styles.hintCard}>
+                      <Text style={styles.hintLabel}>More Help</Text>
+                      <Text style={styles.hintText}>
+                        {getHints(activeChallenge)[hintIdx]}
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  {feedback ? (
+                    <Text
+                      style={[
+                        styles.feedback,
+                        showVictory ? styles.feedbackSuccess : styles.feedbackError,
+                      ]}
+                    >
+                      {feedback}
+                    </Text>
+                  ) : null}
+
+                  <TextInput
+                    value={input}
+                    onChangeText={setInput}
+                    placeholder="Type your command..."
+                    placeholderTextColor={colors.subtext}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={styles.input}
+                  />
+
+                  <View style={styles.buttonRow}>
+                    <TouchableOpacity
+                      style={styles.secondaryButton}
+                      onPress={closeChallenge}
+                    >
+                      <Text style={styles.secondaryButtonText}>Close</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.primaryButton}
+                      onPress={showVictory ? closeChallenge : submitChallenge}
+                    >
+                      <Text style={styles.primaryButtonText}>
+                        {showVictory ? "Done" : "Attack"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
+              ) : null}
+            </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </View>
   );
 }
 
-const monoFont = Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" });
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  pressed: { opacity: 0.8 },
-
-  pageHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 20, marginTop: 16 },
-  pageTitle: { color: Colors.text, fontSize: 24, fontWeight: "800" },
-  pageSubtitle: { color: Colors.textSecondary, fontSize: 14, marginHorizontal: 20, marginTop: 4, marginBottom: 12 },
-
-  progressRow: { marginHorizontal: 20, marginBottom: 16 },
-  progressText: { color: Colors.textSecondary, fontSize: 12, marginBottom: 6 },
-  progressBar: { height: 6, backgroundColor: Colors.border, borderRadius: 3, overflow: "hidden" },
-  progressFill: { height: "100%", backgroundColor: Colors.error, borderRadius: 3 },
-
-  bossCard: { marginHorizontal: 16, marginBottom: 10, borderRadius: 14, overflow: "hidden", borderWidth: 1, borderColor: Colors.border },
-  bossGradient: { padding: 14 },
-  bossTop: { flexDirection: "row", alignItems: "center" },
-  bossIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: Colors.background,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-  },
-  bossInfo: { flex: 1, marginLeft: 12 },
-  bossName: { color: Colors.text, fontSize: 15, fontWeight: "700" },
-  bossSubtitle: { color: Colors.textSecondary, fontSize: 12, marginTop: 1 },
-  diffBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  diffText: { fontSize: 13, fontWeight: "800" },
-  bossFooter: { flexDirection: "row", gap: 16, marginTop: 10, marginLeft: 54 },
-  rewardRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  rewardText: { fontSize: 12, fontWeight: "600", color: Colors.xpGold },
-
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.85)", justifyContent: "center", alignItems: "center", padding: 24 },
-
-  battleCard: { width: "100%", maxWidth: 380, borderRadius: 20, overflow: "hidden", borderWidth: 1, borderColor: Colors.error + "40" },
-  battleGradient: { padding: 24 },
-  battleHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
-  battleBossName: { color: Colors.error, fontSize: 20, fontWeight: "800" },
-  battleTask: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 16 },
-  battleTaskText: { color: Colors.text, fontSize: 15, flex: 1, lineHeight: 22 },
-  outputBox: { backgroundColor: Colors.background, borderRadius: 8, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: Colors.border },
-  outputText: { fontFamily: monoFont, fontSize: 12, color: Colors.terminalGreen, lineHeight: 18 },
-  feedbackBox: { backgroundColor: Colors.warning + "15", borderRadius: 8, padding: 10, marginBottom: 12, borderWidth: 1, borderColor: Colors.warning + "30" },
-  feedbackText: { color: Colors.warning, fontSize: 13 },
-
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: Colors.background,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: 16,
-  },
-  prompt: { fontFamily: monoFont, fontSize: 14, color: Colors.accent, marginRight: 8 },
-  battleInput: { flex: 1, fontFamily: monoFont, fontSize: 14, color: Colors.terminalGreen, padding: 0 },
-
-  battleActions: { flexDirection: "row", gap: 12 },
-  hintBtn: {
+  container: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    backgroundColor: Colors.warning + "15",
-    borderRadius: 12,
-    paddingVertical: 12,
+    backgroundColor: colors.background,
+  },
+  scrollContent: {
+    padding: 24,
+    paddingBottom: 120,
+  },
+  header: {
+    marginBottom: 18,
+  },
+  title: {
+    color: colors.text,
+    fontSize: 28,
+    fontWeight: "800",
+  },
+  subtitle: {
+    color: colors.subtext,
+    fontSize: 15,
+    marginTop: 6,
+  },
+  progressCard: {
+    backgroundColor: colors.card,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.warning + "30",
+    borderColor: colors.border,
+    padding: 18,
+    marginBottom: 18,
   },
-  hintText: { color: Colors.warning, fontWeight: "600", fontSize: 14 },
-  attackBtn: {
-    flex: 2,
+  progressRow: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    paddingVertical: 12,
+    marginBottom: 12,
   },
-  attackText: { color: Colors.text, fontWeight: "700", fontSize: 14 },
-
-  victoryCard: { width: "100%", maxWidth: 340, borderRadius: 20, overflow: "hidden", borderWidth: 1, borderColor: Colors.xpGold + "40" },
-  victoryGradient: { padding: 32, alignItems: "center" },
-  victoryTitle: { color: Colors.xpGold, fontSize: 22, fontWeight: "900", marginTop: 16, letterSpacing: 2 },
-  victoryBoss: { color: Colors.textSecondary, fontSize: 14, marginTop: 6 },
-  rewardsSection: { marginTop: 24, gap: 12 },
-  rewardItem: { flexDirection: "row", alignItems: "center", gap: 8 },
-  rewardAmount: { color: Colors.xpGold, fontSize: 18, fontWeight: "700" },
-  continueBtn: { backgroundColor: Colors.primary, paddingHorizontal: 40, paddingVertical: 14, borderRadius: 12, marginTop: 28 },
-  continueBtnText: { color: Colors.text, fontSize: 16, fontWeight: "700" },
+  progressLabel: {
+    color: colors.subtext,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  progressValue: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  progressBar: {
+    height: 10,
+    backgroundColor: colors.cardAlt,
+    borderRadius: 999,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: colors.accent,
+    borderRadius: 999,
+  },
+  segmentedControl: {
+    flexDirection: "row",
+    alignSelf: "flex-start",
+    backgroundColor: colors.card,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 4,
+    marginBottom: 18,
+  },
+  segmentButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  segmentButtonActive: {
+    backgroundColor: colors.accent,
+  },
+  segmentButtonText: {
+    color: colors.subtext,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  segmentButtonTextActive: {
+    color: colors.background,
+  },
+  emptyState: {
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 18,
+    marginBottom: 18,
+  },
+  emptyTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  emptyText: {
+    color: colors.subtext,
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  challengeCard: {
+    backgroundColor: colors.card,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 18,
+    marginBottom: 14,
+  },
+  challengeTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 10,
+  },
+  challengeCopy: {
+    flex: 1,
+  },
+  challengeRank: {
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  challengeTitle: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  challengeDescription: {
+    color: colors.subtext,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  statusBadge: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  statusBadgeComplete: {
+    backgroundColor: "rgba(74, 222, 128, 0.12)",
+    borderColor: "rgba(74, 222, 128, 0.35)",
+  },
+  statusText: {
+    color: colors.subtext,
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
+  statusTextComplete: {
+    color: colors.success,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.72)",
+    justifyContent: "center",
+    padding: 16,
+  },
+  modalBackdropKeyboard: {
+    justifyContent: "flex-start",
+    paddingTop: 24,
+  },
+  modalAvoidingView: {
+    justifyContent: "center",
+  },
+  modalAvoidingViewKeyboard: {
+    flex: 1,
+    justifyContent: "flex-start",
+  },
+  modalCard: {
+    backgroundColor: colors.card,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 22,
+    maxHeight: "86%",
+  },
+  modalCardKeyboard: {
+    maxHeight: "72%",
+  },
+  modalScrollContent: {
+    paddingBottom: 4,
+  },
+  modalRank: {
+    color: colors.gold,
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  modalTitle: {
+    color: colors.text,
+    fontSize: 26,
+    fontWeight: "800",
+    marginBottom: 10,
+  },
+  modalDescription: {
+    color: colors.subtext,
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 14,
+  },
+  contextCard: {
+    backgroundColor: colors.cardAlt,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14,
+    marginBottom: 12,
+  },
+  contextLabel: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  contextSubLabel: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  contextText: {
+    color: colors.subtext,
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  hintCard: {
+    backgroundColor: colors.cardAlt,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14,
+    marginBottom: 12,
+  },
+  hintLabel: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  hintText: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  feedback: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "600",
+    marginBottom: 12,
+  },
+  feedbackSuccess: {
+    color: colors.success,
+  },
+  feedbackError: {
+    color: colors.danger,
+  },
+  input: {
+    backgroundColor: colors.cardAlt,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    color: colors.text,
+    fontSize: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginBottom: 14,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  secondaryButton: {
+    flex: 1,
+    backgroundColor: colors.cardAlt,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  secondaryButtonText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  primaryButton: {
+    flex: 1,
+    backgroundColor: colors.accent,
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  primaryButtonText: {
+    color: colors.background,
+    fontSize: 15,
+    fontWeight: "800",
+  },
 });

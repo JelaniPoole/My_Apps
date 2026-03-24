@@ -14,3 +14,34 @@ export const challenges: Challenge[] = [
   { id: "c11", title: "Diff Dragon", description: "Inspect source changes before staging.", icon: "git-compare", xpReward: 90, statReward: { type: "INT", amount: 5 }, difficulty: "B", task: "Show the current unstaged Git changes.", hints: ["Use the compare command inside Git.", "You do not need any file path for this one."], acceptedCommands: ["git diff"], output: "diff --git a/app.js b/app.js\n+console.log('patched')", bossName: "Diff Dragon" },
   { id: "c50", title: "System Overlord", description: "Chain together a full maintenance command.", icon: "settings", xpReward: 300, statReward: { type: "VIT", amount: 25 }, difficulty: "A", task: "Run a full Debian-style update, upgrade, and cleanup sequence.", hints: ["This boss expects a three-command chain.", "Use `&&` to stop if one step fails."], acceptedCommands: ["apt update && apt upgrade -y && apt autoremove"], output: "System optimized! All packages updated.", bossName: "Admin Emperor" },
 ];
+
+const challengeProgressionOrder = [
+  "c1",
+  "c2",
+  "c3",
+  "c4",
+  "c7",
+  "c5",
+  "c6",
+  "c8",
+  "c9",
+  "c10",
+  "c11",
+  "c50",
+] as const;
+
+const challengeOrderLookup = new Map(
+  challengeProgressionOrder.map((id, index) => [id, index]),
+);
+
+export const orderedChallenges = [...challenges].sort((left, right) => {
+  const leftOrder = challengeOrderLookup.get(left.id) ?? Number.MAX_SAFE_INTEGER;
+  const rightOrder =
+    challengeOrderLookup.get(right.id) ?? Number.MAX_SAFE_INTEGER;
+
+  if (leftOrder !== rightOrder) {
+    return leftOrder - rightOrder;
+  }
+
+  return left.title.localeCompare(right.title);
+});

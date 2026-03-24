@@ -802,6 +802,33 @@ export const lessons: Lesson[] = [
   },
 ];
 
+const lessonProgressionOrder = [
+  "1",
+  "2",
+  "4",
+  "11",
+  "3",
+  "12",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "13",
+  "14",
+  "10",
+  "15",
+  "20",
+] as const;
+
+const lessonOrderLookup = new Map(lessonProgressionOrder.map((id, index) => [id, index]));
+
+export const orderedLessons = [...lessons].sort((a, b) => {
+  const aOrder = lessonOrderLookup.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+  const bOrder = lessonOrderLookup.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+  return aOrder - bOrder;
+});
+
 export function getNextLessonRecommendation(completedLessons: string[]) {
-  return lessons.find((lesson) => !completedLessons.includes(lesson.id)) ?? null;
+  return orderedLessons.find((lesson) => !completedLessons.includes(lesson.id)) ?? null;
 }
