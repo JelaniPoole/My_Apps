@@ -111,7 +111,7 @@ export const lessons: Lesson[] = [
         hint: "Use the file-creation command followed by the filename.",
         successMessage: "You forged a fresh quest log.",
         output: "",
-        example: "Example: `touch notes.txt`",
+        example: "Example: `touch quest.log`",
         whyItWorks: "`touch` creates the file if it does not already exist.",
       },
       {

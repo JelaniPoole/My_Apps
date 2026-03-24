@@ -1,13 +1,12 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   StyleSheet,
   Text,
   View,
   TextInput,
-  ScrollView,
   Pressable,
   Platform,
-  KeyboardAvoidingView,
+  Keyboard,
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn, FadeInDown, SlideInRight } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { lessons } from "@/lib/linux-data";
 import { useProgress } from "@/lib/progress-context";
 
@@ -50,6 +50,18 @@ export default function LessonScreen() {
   const [stepCompleted, setStepCompleted] = useState(false);
   const [lessonDone, setLessonDone] = useState(false);
   const [showHint, setShowHint] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", () => setIsKeyboardVisible(true));
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => setIsKeyboardVisible(false));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
   if (!lesson) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -140,11 +152,7 @@ export default function LessonScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
-    >
+    <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) + 8 }]}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={20} color={Colors.text} />
@@ -178,60 +186,55 @@ export default function LessonScreen() {
         ))}
       </View>
 
-      <ScrollView
+      <KeyboardAwareScrollViewCompat
         style={styles.screenBody}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.bodyContent,
+          {
+            paddingBottom:
+              Platform.OS === "web" ? 20 : isKeyboardVisible ? 0 : insets.bottom + 16,
+          },
+        ]}
+        bottomOffset={0}
+        extraKeyboardSpace={0}
       >
-        <View style={styles.bodyShell}>
-          <ScrollView
-            style={styles.bodyScroll}
-            contentContainerStyle={styles.bodyContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <Animated.View entering={SlideInRight.duration(300)} style={styles.lessonPanel}>
-              <View style={styles.instructionCard}>
-                <View style={styles.lessonMetaRow}>
-                  <View style={styles.lessonChip}>
-                    <Text style={styles.lessonChipLabel}>Concept</Text>
-                    <Text style={styles.lessonChipValue}>{step.concept}</Text>
-                  </View>
-                  <View style={styles.lessonChip}>
-                    <Text style={styles.lessonChipLabel}>Track</Text>
-                    <Text style={styles.lessonChipValue}>{lesson.category}</Text>
-                  </View>
-                </View>
-                <Text style={styles.instruction}>{step.instruction}</Text>
-                <Text style={styles.explanation}>{step.explanation}</Text>
-                {step.example ? (
-                  <View style={styles.exampleBox}>
-                    <Text style={styles.exampleLabel}>Example</Text>
-                    <Text style={styles.exampleText}>{step.example}</Text>
-                  </View>
-                ) : null}
-                {step.whyItWorks ? (
-                  <View style={styles.whyBox}>
-                    <Text style={styles.whyLabel}>Why it works</Text>
-                    <Text style={styles.whyText}>{step.whyItWorks}</Text>
-                  </View>
-                ) : null}
-                {showHint && (
-                  <View style={styles.hintBox}>
-                    <Ionicons name="bulb" size={14} color={Colors.warning} />
-                    <Text style={styles.hintText}>{step.hint}</Text>
-                  </View>
-                )}
+        <Animated.View entering={SlideInRight.duration(300)} style={styles.lessonPanel}>
+          <View style={styles.instructionCard}>
+            <View style={styles.lessonMetaRow}>
+              <View style={styles.lessonChip}>
+                <Text style={styles.lessonChipLabel}>Concept</Text>
+                <Text style={styles.lessonChipValue}>{step.concept}</Text>
               </View>
-            </Animated.View>
-          </ScrollView>
+              <View style={styles.lessonChip}>
+                <Text style={styles.lessonChipLabel}>Track</Text>
+                <Text style={styles.lessonChipValue}>{lesson.category}</Text>
+              </View>
+            </View>
+            <Text style={styles.instruction}>{step.instruction}</Text>
+            <Text style={styles.explanation}>{step.explanation}</Text>
+            {step.example ? (
+              <View style={styles.exampleBox}>
+                <Text style={styles.exampleLabel}>Example</Text>
+                <Text style={styles.exampleText}>{step.example}</Text>
+              </View>
+            ) : null}
+            {step.whyItWorks ? (
+              <View style={styles.whyBox}>
+                <Text style={styles.whyLabel}>Why it works</Text>
+                <Text style={styles.whyText}>{step.whyItWorks}</Text>
+              </View>
+            ) : null}
+            {showHint && (
+              <View style={styles.hintBox}>
+                <Ionicons name="bulb" size={14} color={Colors.warning} />
+                <Text style={styles.hintText}>{step.hint}</Text>
+              </View>
+            )}
+          </View>
 
-          <View
-            style={[
-              styles.lessonTerminalWrap,
-              { paddingBottom: Platform.OS === "web" ? 12 : Math.max(insets.bottom, 12) },
-            ]}
-          >
+          <View style={styles.lessonTerminalWrap}>
             <View style={styles.terminalArea}>
               <View style={styles.terminalContent}>
                 {outputLines.length === 0 ? <Text style={[styles.termLine, styles.promptLine]}>hunter@system:~$</Text> : null}
@@ -286,9 +289,9 @@ export default function LessonScreen() {
               )}
             </View>
           </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </Animated.View>
+      </KeyboardAwareScrollViewCompat>
+    </View>
   );
 }
 
@@ -343,16 +346,9 @@ const styles = StyleSheet.create({
   screenBody: {
     flex: 1,
   },
-  bodyShell: {
-    flex: 1,
-  },
-  bodyScroll: {
-    flex: 1,
-  },
   bodyContent: {
     paddingHorizontal: 18,
     paddingTop: 2,
-    paddingBottom: 12,
   },
   dot: {
     width: 6,
@@ -460,9 +456,7 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   lessonTerminalWrap: {
-    paddingHorizontal: 18,
     paddingTop: 10,
-    backgroundColor: Colors.background,
   },
   terminalArea: {
     backgroundColor: "#0A0E14",
@@ -470,7 +464,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderWidth: 1,
     borderColor: Colors.border,
-    minHeight: 220,
+    minHeight: 280,
   },
   terminalContent: {
     padding: 12,

@@ -7,7 +7,6 @@ import {
   Pressable,
   Modal,
   Platform,
-  KeyboardAvoidingView,
   Keyboard,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,6 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
 import Colors from "@/constants/colors";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useProgress } from "@/lib/progress-context";
 import { lessons, Lesson } from "@/lib/linux-data";
 import TerminalView from "@/components/TerminalView";
@@ -88,10 +88,8 @@ export default function Dungeons() {
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   useEffect(() => {
-    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-    const showSub = Keyboard.addListener(showEvent, () => setIsKeyboardVisible(true));
-    const hideSub = Keyboard.addListener(hideEvent, () => setIsKeyboardVisible(false));
+    const showSub = Keyboard.addListener("keyboardDidShow", () => setIsKeyboardVisible(true));
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => setIsKeyboardVisible(false));
 
     return () => {
       showSub.remove();
@@ -146,16 +144,11 @@ export default function Dungeons() {
   }
 
   const webTop = Platform.OS === "web" ? 67 : 0;
-  const estimatedTabBarHeight = Platform.OS === "web" ? 0 : insets.bottom + 64;
 
   if (activeLesson) {
     const step = activeLesson.steps[currentStep];
     return (
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
-      >
+      <View style={styles.container}>
         <View style={[styles.dungeonHeader, { paddingTop: insets.top + webTop + 8 }]}>
           <Pressable onPress={closeDungeon} hitSlop={16}>
             <Ionicons name="arrow-back" size={20} color={Colors.text} />
@@ -169,85 +162,79 @@ export default function Dungeons() {
           <View style={{ width: 24 }} />
         </View>
 
-        <View style={styles.activeLessonLayout}>
-          <ScrollView
-            style={styles.activeBodyScroll}
-            contentContainerStyle={styles.activeBodyContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.floorProgress}>
-              {activeLesson.steps.map((_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.floorDot,
-                    i < currentStep
-                      ? styles.floorCleared
-                      : i === currentStep
-                      ? styles.floorCurrent
-                      : styles.floorLocked,
-                  ]}
-                />
-              ))}
-            </View>
-
-            <View style={styles.lessonPanel}>
-              <View style={styles.instructionCard}>
-                <View style={styles.lessonMetaRow}>
-                  <View style={styles.lessonChip}>
-                    <Text style={styles.lessonChipLabel}>Concept</Text>
-                    <Text style={styles.lessonChipValue}>{step?.concept}</Text>
-                  </View>
-                  <View style={styles.lessonChip}>
-                    <Text style={styles.lessonChipLabel}>Track</Text>
-                    <Text style={styles.lessonChipValue}>{activeLesson.category}</Text>
-                  </View>
-                </View>
-                <View style={styles.instructionHeader}>
-                  <Ionicons name="alert-circle" size={18} color={Colors.accent} />
-                  <Text style={styles.instructionText}>{step?.instruction}</Text>
-                </View>
-                <Text style={styles.explanationText}>{step?.explanation}</Text>
-                {step?.example ? (
-                  <View style={styles.exampleBox}>
-                    <Text style={styles.exampleLabel}>Example</Text>
-                    <Text style={styles.exampleText}>{step.example}</Text>
-                  </View>
-                ) : null}
-                {step?.whyItWorks ? (
-                  <View style={styles.whyBox}>
-                    <Text style={styles.whyLabel}>Why it works</Text>
-                    <Text style={styles.whyText}>{step.whyItWorks}</Text>
-                  </View>
-                ) : null}
-              </View>
-            </View>
-          </ScrollView>
-
-          <View
-            style={[
-              styles.terminalWrap,
-              {
-                paddingBottom:
-                  Platform.OS === "web"
-                    ? 12
-                    : isKeyboardVisible
-                    ? 0
-                    : Math.max(estimatedTabBarHeight - insets.bottom + 8, 12),
-              },
-            ]}
-          >
-            <TerminalView
-              commandHandler={handleCommand}
-              autoFocus={false}
-              initialCwd={activeLesson.terminalSeed?.cwd}
-              initialDirectories={activeLesson.terminalSeed?.directories}
-              initialFiles={activeLesson.terminalSeed?.files}
-              minHeight={280}
-            />
+        <KeyboardAwareScrollViewCompat
+          style={styles.activeBodyScroll}
+          contentContainerStyle={[
+            styles.activeBodyContent,
+            {
+              paddingBottom:
+                Platform.OS === "web" ? 20 : isKeyboardVisible ? 0 : insets.bottom + 88,
+            },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bottomOffset={0}
+          extraKeyboardSpace={0}
+        >
+          <View style={styles.floorProgress}>
+            {activeLesson.steps.map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.floorDot,
+                  i < currentStep
+                    ? styles.floorCleared
+                    : i === currentStep
+                    ? styles.floorCurrent
+                    : styles.floorLocked,
+                ]}
+              />
+            ))}
           </View>
-        </View>
+
+          <View style={styles.lessonPanel}>
+            <View style={styles.instructionCard}>
+              <View style={styles.lessonMetaRow}>
+                <View style={styles.lessonChip}>
+                  <Text style={styles.lessonChipLabel}>Concept</Text>
+                  <Text style={styles.lessonChipValue}>{step?.concept}</Text>
+                </View>
+                <View style={styles.lessonChip}>
+                  <Text style={styles.lessonChipLabel}>Track</Text>
+                  <Text style={styles.lessonChipValue}>{activeLesson.category}</Text>
+                </View>
+              </View>
+              <View style={styles.instructionHeader}>
+                <Ionicons name="alert-circle" size={18} color={Colors.accent} />
+                <Text style={styles.instructionText}>{step?.instruction}</Text>
+              </View>
+              <Text style={styles.explanationText}>{step?.explanation}</Text>
+              {step?.example ? (
+                <View style={styles.exampleBox}>
+                  <Text style={styles.exampleLabel}>Example</Text>
+                  <Text style={styles.exampleText}>{step.example}</Text>
+                </View>
+              ) : null}
+              {step?.whyItWorks ? (
+                <View style={styles.whyBox}>
+                  <Text style={styles.whyLabel}>Why it works</Text>
+                  <Text style={styles.whyText}>{step.whyItWorks}</Text>
+                </View>
+              ) : null}
+            </View>
+
+            <View style={styles.terminalWrap}>
+              <TerminalView
+                commandHandler={handleCommand}
+                autoFocus={false}
+                initialCwd={activeLesson.terminalSeed?.cwd}
+                initialDirectories={activeLesson.terminalSeed?.directories}
+                initialFiles={activeLesson.terminalSeed?.files}
+                minHeight={280}
+              />
+            </View>
+          </View>
+        </KeyboardAwareScrollViewCompat>
 
         <Modal visible={showComplete} transparent animationType="fade">
           <View style={styles.modalOverlay}>
@@ -277,7 +264,7 @@ export default function Dungeons() {
             </Animated.View>
           </View>
         </Modal>
-      </KeyboardAvoidingView>
+      </View>
     );
   }
 
@@ -354,9 +341,8 @@ const styles = StyleSheet.create({
   floorText: { color: Colors.textSecondary, fontSize: 11, marginTop: 1 },
 
   floorProgress: { flexDirection: "row", justifyContent: "center", gap: 8, paddingVertical: 10 },
-  activeLessonLayout: { flex: 1 },
   activeBodyScroll: { flex: 1 },
-  activeBodyContent: { paddingHorizontal: 18, paddingTop: 2, paddingBottom: 12 },
+  activeBodyContent: { paddingHorizontal: 18, paddingTop: 2 },
   lessonPanel: {
     gap: 10,
   },
@@ -438,9 +424,7 @@ const styles = StyleSheet.create({
   },
 
   terminalWrap: {
-    paddingHorizontal: 18,
     paddingTop: 10,
-    backgroundColor: Colors.background,
   },
 
   modalOverlay: {
