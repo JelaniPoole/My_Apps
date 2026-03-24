@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,7 +8,9 @@ import {
   Modal,
   Platform,
   KeyboardAvoidingView,
+  Keyboard,
 } from "react-native";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -80,10 +82,24 @@ function DungeonCard({
 
 export default function Dungeons() {
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const { completedLessons, completeLesson, addXp, addStat } = useProgress();
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [showComplete, setShowComplete] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvent, () => setIsKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setIsKeyboardVisible(false));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   function handleCommand(cmd: string, helpers: { runDefaultCommand: (cmd: string) => { output: string; type: "output" | "error" | "success" } }) {
     if (!activeLesson) return { output: "", type: "output" as const };
@@ -139,11 +155,11 @@ export default function Dungeons() {
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
         <View style={[styles.dungeonHeader, { paddingTop: insets.top + webTop + 8 }]}>
           <Pressable onPress={closeDungeon} hitSlop={16}>
-            <Ionicons name="arrow-back" size={24} color={Colors.text} />
+            <Ionicons name="arrow-back" size={20} color={Colors.text} />
           </Pressable>
           <View style={styles.dungeonHeaderCenter}>
             <Text style={styles.dungeonHeaderTitle}>{activeLesson.dungeonName}</Text>
@@ -154,59 +170,84 @@ export default function Dungeons() {
           <View style={{ width: 24 }} />
         </View>
 
-        <View style={styles.floorProgress}>
-          {activeLesson.steps.map((_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.floorDot,
-                i < currentStep
-                  ? styles.floorCleared
-                  : i === currentStep
-                  ? styles.floorCurrent
-                  : styles.floorLocked,
-              ]}
+        <View style={styles.activeLessonLayout}>
+          <ScrollView
+            style={styles.activeBodyScroll}
+            contentContainerStyle={styles.activeBodyContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.floorProgress}>
+              {activeLesson.steps.map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.floorDot,
+                    i < currentStep
+                      ? styles.floorCleared
+                      : i === currentStep
+                      ? styles.floorCurrent
+                      : styles.floorLocked,
+                  ]}
+                />
+              ))}
+            </View>
+
+            <View style={styles.lessonPanel}>
+              <View style={styles.instructionCard}>
+                <View style={styles.lessonMetaRow}>
+                  <View style={styles.lessonChip}>
+                    <Text style={styles.lessonChipLabel}>Concept</Text>
+                    <Text style={styles.lessonChipValue}>{step?.concept}</Text>
+                  </View>
+                  <View style={styles.lessonChip}>
+                    <Text style={styles.lessonChipLabel}>Track</Text>
+                    <Text style={styles.lessonChipValue}>{activeLesson.category}</Text>
+                  </View>
+                </View>
+                <View style={styles.instructionHeader}>
+                  <Ionicons name="alert-circle" size={18} color={Colors.accent} />
+                  <Text style={styles.instructionText}>{step?.instruction}</Text>
+                </View>
+                <Text style={styles.explanationText}>{step?.explanation}</Text>
+                {step?.example ? (
+                  <View style={styles.exampleBox}>
+                    <Text style={styles.exampleLabel}>Example</Text>
+                    <Text style={styles.exampleText}>{step.example}</Text>
+                  </View>
+                ) : null}
+                {step?.whyItWorks ? (
+                  <View style={styles.whyBox}>
+                    <Text style={styles.whyLabel}>Why it works</Text>
+                    <Text style={styles.whyText}>{step.whyItWorks}</Text>
+                  </View>
+                ) : null}
+              </View>
+            </View>
+          </ScrollView>
+
+          <View
+            style={[
+              styles.terminalWrap,
+              {
+                paddingBottom:
+                  Platform.OS === "web"
+                    ? 12
+                    : isKeyboardVisible
+                    ? 0
+                    : Math.max(tabBarHeight - insets.bottom + 8, 12),
+              },
+            ]}
+          >
+            <TerminalView
+              commandHandler={handleCommand}
+              autoFocus={false}
+              initialCwd={activeLesson.terminalSeed?.cwd}
+              initialDirectories={activeLesson.terminalSeed?.directories}
+              initialFiles={activeLesson.terminalSeed?.files}
+              minHeight={280}
             />
-          ))}
-        </View>
-
-        <View style={styles.instructionCard}>
-          <View style={styles.lessonMetaRow}>
-            <View style={styles.lessonChip}>
-              <Text style={styles.lessonChipLabel}>Concept</Text>
-              <Text style={styles.lessonChipValue}>{step?.concept}</Text>
-            </View>
-            <View style={styles.lessonChip}>
-              <Text style={styles.lessonChipLabel}>Track</Text>
-              <Text style={styles.lessonChipValue}>{activeLesson.category}</Text>
-            </View>
           </View>
-          <View style={styles.instructionHeader}>
-            <Ionicons name="alert-circle" size={18} color={Colors.accent} />
-            <Text style={styles.instructionText}>{step?.instruction}</Text>
-          </View>
-          <Text style={styles.explanationText}>{step?.explanation}</Text>
-          {step?.example ? (
-            <View style={styles.exampleBox}>
-              <Text style={styles.exampleLabel}>Example</Text>
-              <Text style={styles.exampleText}>{step.example}</Text>
-            </View>
-          ) : null}
-          {step?.whyItWorks ? (
-            <View style={styles.whyBox}>
-              <Text style={styles.whyLabel}>Why it works</Text>
-              <Text style={styles.whyText}>{step.whyItWorks}</Text>
-            </View>
-          ) : null}
-        </View>
-
-        <View style={styles.terminalWrap}>
-          <TerminalView
-            commandHandler={handleCommand}
-            initialCwd={activeLesson.terminalSeed?.cwd}
-            initialDirectories={activeLesson.terminalSeed?.directories}
-            initialFiles={activeLesson.terminalSeed?.files}
-          />
         </View>
 
         <Modal visible={showComplete} transparent animationType="fade">
@@ -306,105 +347,102 @@ const styles = StyleSheet.create({
   dungeonHeader: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    backgroundColor: Colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    paddingHorizontal: 18,
+    paddingBottom: 8,
   },
   dungeonHeaderCenter: { flex: 1, alignItems: "center" },
-  dungeonHeaderTitle: { color: Colors.text, fontSize: 16, fontWeight: "700" },
-  floorText: { color: Colors.textSecondary, fontSize: 12 },
+  dungeonHeaderTitle: { color: Colors.text, fontSize: 15, fontWeight: "700" },
+  floorText: { color: Colors.textSecondary, fontSize: 11, marginTop: 1 },
 
-  floorProgress: { flexDirection: "row", justifyContent: "center", gap: 6, paddingVertical: 12 },
-  floorDot: { width: 10, height: 10, borderRadius: 5 },
+  floorProgress: { flexDirection: "row", justifyContent: "center", gap: 8, paddingVertical: 10 },
+  activeLessonLayout: { flex: 1 },
+  activeBodyScroll: { flex: 1 },
+  activeBodyContent: { paddingHorizontal: 18, paddingTop: 2, paddingBottom: 12 },
+  lessonPanel: {
+    gap: 10,
+  },
+  floorDot: { width: 6, height: 6, borderRadius: 3 },
   floorCleared: { backgroundColor: Colors.success },
-  floorCurrent: { backgroundColor: Colors.accent },
+  floorCurrent: { backgroundColor: Colors.accent, width: 18 },
   floorLocked: { backgroundColor: Colors.border },
 
   instructionCard: {
-    backgroundColor: Colors.surface,
-    marginHorizontal: 16,
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.accent + "30",
+    paddingHorizontal: 2,
+    paddingVertical: 4,
   },
   lessonMetaRow: {
     flexDirection: "row",
-    gap: 10,
-    marginBottom: 14,
+    gap: 8,
+    marginBottom: 10,
   },
   lessonChip: {
-    flex: 1,
-    backgroundColor: Colors.background,
-    borderRadius: 10,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignSelf: "flex-start",
   },
   lessonChipLabel: {
     color: Colors.textMuted,
-    fontSize: 11,
+    fontSize: 9,
     textTransform: "uppercase",
+    letterSpacing: 0.6,
   },
   lessonChipValue: {
     color: Colors.accent,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
-    marginTop: 4,
+    marginTop: 2,
   },
   instructionHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
   },
-  instructionText: { flex: 1, color: Colors.text, fontSize: 15, lineHeight: 22, fontWeight: "700" },
+  instructionText: { flex: 1, color: Colors.text, fontSize: 18, lineHeight: 28, fontWeight: "700" },
   explanationText: {
     color: Colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 22,
-    marginTop: 10,
+    fontSize: 15,
+    lineHeight: 24,
+    marginTop: 12,
   },
   exampleBox: {
-    marginTop: 14,
-    backgroundColor: Colors.background,
-    borderRadius: 10,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    marginTop: 16,
+    paddingTop: 14,
   },
   exampleLabel: {
     color: Colors.textMuted,
-    fontSize: 11,
+    fontSize: 10,
     textTransform: "uppercase",
+    letterSpacing: 0.6,
   },
   exampleText: {
     color: Colors.terminalGreen,
-    fontSize: 13,
-    marginTop: 6,
+    fontSize: 15,
+    marginTop: 8,
   },
   whyBox: {
     marginTop: 12,
-    backgroundColor: Colors.accent + "10",
-    borderRadius: 10,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: Colors.accent + "25",
+    paddingTop: 12,
   },
   whyLabel: {
     color: Colors.accent,
-    fontSize: 11,
+    fontSize: 10,
     textTransform: "uppercase",
+    letterSpacing: 0.6,
   },
   whyText: {
     color: Colors.text,
-    fontSize: 13,
-    lineHeight: 20,
-    marginTop: 6,
+    fontSize: 14,
+    lineHeight: 22,
+    marginTop: 8,
   },
 
-  terminalWrap: { flex: 1, margin: 16 },
+  terminalWrap: {
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    backgroundColor: Colors.background,
+  },
 
   modalOverlay: {
     flex: 1,

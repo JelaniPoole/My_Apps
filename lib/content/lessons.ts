@@ -18,7 +18,7 @@ function createSeed({
   cwd?: string;
   directories?: Record<string, string[]>;
   files?: Record<string, string>;
-}): TerminalSeed {
+} = {}): TerminalSeed {
   return {
     cwd,
     directories: {

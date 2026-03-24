@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -50,9 +50,6 @@ export default function LessonScreen() {
   const [stepCompleted, setStepCompleted] = useState(false);
   const [lessonDone, setLessonDone] = useState(false);
   const [showHint, setShowHint] = useState(false);
-  const scrollRef = useRef<ScrollView>(null);
-  const inputRef = useRef<TextInput>(null);
-
   if (!lesson) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -95,8 +92,6 @@ export default function LessonScreen() {
 
     setOutputLines(newLines);
     setInput("");
-
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
   }
 
   function handleNext() {
@@ -108,7 +103,6 @@ export default function LessonScreen() {
       setShowHint(false);
       setOutputLines([]);
       setInput("");
-      setTimeout(() => inputRef.current?.focus(), 100);
     } else {
       if (!isAlreadyCompleted) {
         addXp(lesson!.xpReward);
@@ -153,7 +147,7 @@ export default function LessonScreen() {
     >
       <View style={[styles.header, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) + 8 }]}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={Colors.text} />
+          <Ionicons name="arrow-back" size={20} color={Colors.text} />
         </Pressable>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle} numberOfLines={1}>
@@ -167,7 +161,7 @@ export default function LessonScreen() {
           onPress={() => setShowHint(!showHint)}
           style={[styles.hintBtn, showHint && { backgroundColor: Colors.warning + "20" }]}
         >
-          <Ionicons name="bulb" size={20} color={Colors.warning} />
+          <Ionicons name="bulb-outline" size={18} color={Colors.warning} />
         </Pressable>
       </View>
 
@@ -184,101 +178,116 @@ export default function LessonScreen() {
         ))}
       </View>
 
-      <Animated.View entering={SlideInRight.duration(300)} style={styles.instructionCard}>
-        <View style={styles.lessonMetaRow}>
-          <View style={styles.lessonChip}>
-            <Text style={styles.lessonChipLabel}>Concept</Text>
-            <Text style={styles.lessonChipValue}>{step.concept}</Text>
-          </View>
-          <View style={styles.lessonChip}>
-            <Text style={styles.lessonChipLabel}>Track</Text>
-            <Text style={styles.lessonChipValue}>{lesson.category}</Text>
+      <ScrollView
+        style={styles.screenBody}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.bodyShell}>
+          <ScrollView
+            style={styles.bodyScroll}
+            contentContainerStyle={styles.bodyContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <Animated.View entering={SlideInRight.duration(300)} style={styles.lessonPanel}>
+              <View style={styles.instructionCard}>
+                <View style={styles.lessonMetaRow}>
+                  <View style={styles.lessonChip}>
+                    <Text style={styles.lessonChipLabel}>Concept</Text>
+                    <Text style={styles.lessonChipValue}>{step.concept}</Text>
+                  </View>
+                  <View style={styles.lessonChip}>
+                    <Text style={styles.lessonChipLabel}>Track</Text>
+                    <Text style={styles.lessonChipValue}>{lesson.category}</Text>
+                  </View>
+                </View>
+                <Text style={styles.instruction}>{step.instruction}</Text>
+                <Text style={styles.explanation}>{step.explanation}</Text>
+                {step.example ? (
+                  <View style={styles.exampleBox}>
+                    <Text style={styles.exampleLabel}>Example</Text>
+                    <Text style={styles.exampleText}>{step.example}</Text>
+                  </View>
+                ) : null}
+                {step.whyItWorks ? (
+                  <View style={styles.whyBox}>
+                    <Text style={styles.whyLabel}>Why it works</Text>
+                    <Text style={styles.whyText}>{step.whyItWorks}</Text>
+                  </View>
+                ) : null}
+                {showHint && (
+                  <View style={styles.hintBox}>
+                    <Ionicons name="bulb" size={14} color={Colors.warning} />
+                    <Text style={styles.hintText}>{step.hint}</Text>
+                  </View>
+                )}
+              </View>
+            </Animated.View>
+          </ScrollView>
+
+          <View
+            style={[
+              styles.lessonTerminalWrap,
+              { paddingBottom: Platform.OS === "web" ? 12 : Math.max(insets.bottom, 12) },
+            ]}
+          >
+            <View style={styles.terminalArea}>
+              <View style={styles.terminalContent}>
+                {outputLines.length === 0 ? <Text style={[styles.termLine, styles.promptLine]}>hunter@system:~$</Text> : null}
+                {outputLines.map((line) => (
+                  line.type === "prompt" ? (
+                    <Text key={line.id} style={styles.termLine}>
+                      <Text style={styles.promptLine}>$ </Text>
+                      <Text style={styles.commandLine}>{line.text.slice(2)}</Text>
+                    </Text>
+                  ) : (
+                    <Text
+                      key={line.id}
+                      style={[
+                        styles.termLine,
+                        line.type === "error" && styles.errorLine,
+                        line.type === "success" && styles.successLine,
+                      ]}
+                    >
+                      {line.text}
+                    </Text>
+                  )
+                ))}
+              </View>
+
+              {!stepCompleted ? (
+                <View style={styles.inputRow}>
+                  <Text style={styles.promptChar}>hunter@system:~$ </Text>
+                  <TextInput
+                    style={styles.input}
+                    value={input}
+                    onChangeText={setInput}
+                    onSubmitEditing={handleSubmit}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    placeholder="type the command..."
+                    placeholderTextColor={Colors.textMuted}
+                    returnKeyType="send"
+                    blurOnSubmit={false}
+                    selectionColor={Colors.terminalGreen}
+                  />
+                </View>
+              ) : (
+                <Pressable
+                  onPress={handleNext}
+                  style={({ pressed }) => [styles.nextBtn, pressed && { opacity: 0.85 }]}
+                >
+                  <Text style={styles.nextText}>
+                    {currentStep < lesson.steps.length - 1 ? "Next Step" : "Finish Lesson"}
+                  </Text>
+                  <Ionicons name="arrow-forward" size={18} color="#000" />
+                </Pressable>
+              )}
+            </View>
           </View>
         </View>
-        <Text style={styles.instruction}>{step.instruction}</Text>
-        <Text style={styles.explanation}>{step.explanation}</Text>
-        {step.example ? (
-          <View style={styles.exampleBox}>
-            <Text style={styles.exampleLabel}>Example</Text>
-            <Text style={styles.exampleText}>{step.example}</Text>
-          </View>
-        ) : null}
-        {step.whyItWorks ? (
-          <View style={styles.whyBox}>
-            <Text style={styles.whyLabel}>Why it works</Text>
-            <Text style={styles.whyText}>{step.whyItWorks}</Text>
-          </View>
-        ) : null}
-        {showHint && (
-          <View style={styles.hintBox}>
-            <Ionicons name="bulb" size={14} color={Colors.warning} />
-            <Text style={styles.hintText}>{step.hint}</Text>
-          </View>
-        )}
-      </Animated.View>
-
-      <View style={styles.terminalArea}>
-        <ScrollView
-          ref={scrollRef}
-          style={styles.terminalScroll}
-          contentContainerStyle={styles.terminalContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {outputLines.length === 0 ? <Text style={[styles.termLine, styles.promptLine]}>hunter@system:~$</Text> : null}
-          {outputLines.map((line) => (
-            line.type === "prompt" ? (
-              <Text key={line.id} style={styles.termLine}>
-                <Text style={styles.promptLine}>$ </Text>
-                <Text style={styles.commandLine}>{line.text.slice(2)}</Text>
-              </Text>
-            ) : (
-              <Text
-                key={line.id}
-                style={[
-                  styles.termLine,
-                  line.type === "error" && styles.errorLine,
-                  line.type === "success" && styles.successLine,
-                ]}
-              >
-                {line.text}
-              </Text>
-            )
-          ))}
-        </ScrollView>
-
-        {!stepCompleted ? (
-          <View style={styles.inputRow}>
-            <Text style={styles.promptChar}>hunter@system:~$ </Text>
-            <TextInput
-              ref={inputRef}
-              style={styles.input}
-              value={input}
-              onChangeText={setInput}
-              onSubmitEditing={handleSubmit}
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoFocus
-              placeholder="type the command..."
-              placeholderTextColor={Colors.textMuted}
-              returnKeyType="send"
-              blurOnSubmit={false}
-              selectionColor={Colors.terminalGreen}
-            />
-          </View>
-        ) : (
-          <Pressable
-            onPress={handleNext}
-            style={({ pressed }) => [styles.nextBtn, pressed && { opacity: 0.85 }]}
-          >
-            <Text style={styles.nextText}>
-              {currentStep < lesson.steps.length - 1 ? "Next Step" : "Finish Lesson"}
-            </Text>
-            <Ionicons name="arrow-forward" size={18} color="#000" />
-          </Pressable>
-        )}
-      </View>
-
-      <View style={{ height: Platform.OS === "web" ? 34 : insets.bottom }} />
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -291,15 +300,14 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    gap: 12,
+    paddingHorizontal: 18,
+    paddingBottom: 8,
+    gap: 10,
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: Colors.surface,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -307,161 +315,172 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "600" as const,
+    fontSize: 15,
+    fontWeight: "700" as const,
     color: Colors.text,
+    textAlign: "center",
   },
   stepIndicator: {
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.textSecondary,
-    marginTop: 2,
+    marginTop: 1,
+    textAlign: "center",
   },
   hintBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: Colors.surface,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
   },
   progressDots: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 6,
-    paddingHorizontal: 16,
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingBottom: 10,
+  },
+  screenBody: {
+    flex: 1,
+  },
+  bodyShell: {
+    flex: 1,
+  },
+  bodyScroll: {
+    flex: 1,
+  },
+  bodyContent: {
+    paddingHorizontal: 18,
+    paddingTop: 2,
     paddingBottom: 12,
   },
   dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: Colors.border,
   },
   dotActive: {
     backgroundColor: Colors.accent,
-    width: 24,
+    width: 18,
   },
   dotCompleted: {
     backgroundColor: Colors.terminalGreen,
   },
+  lessonPanel: {
+    gap: 10,
+  },
   instructionCard: {
-    marginHorizontal: 16,
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    padding: 18,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    paddingHorizontal: 2,
+    paddingVertical: 4,
   },
   instruction: {
-    fontSize: 16,
+    fontSize: 18,
     color: Colors.text,
-    lineHeight: 24,
+    lineHeight: 28,
     fontWeight: "700" as const,
   },
   lessonMetaRow: {
     flexDirection: "row",
-    gap: 10,
-    marginBottom: 14,
+    gap: 8,
+    marginBottom: 10,
   },
   lessonChip: {
-    flex: 1,
-    backgroundColor: Colors.background,
-    borderRadius: 10,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignSelf: "flex-start",
   },
   lessonChipLabel: {
     color: Colors.textMuted,
-    fontSize: 11,
+    fontSize: 9,
     textTransform: "uppercase" as const,
+    letterSpacing: 0.6,
   },
   lessonChipValue: {
     color: Colors.accent,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700" as const,
-    marginTop: 4,
+    marginTop: 2,
   },
   explanation: {
-    fontSize: 14,
+    fontSize: 15,
     color: Colors.textSecondary,
-    lineHeight: 22,
-    marginTop: 10,
+    lineHeight: 24,
+    marginTop: 12,
   },
   exampleBox: {
-    marginTop: 14,
-    backgroundColor: Colors.background,
-    borderRadius: 10,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    marginTop: 16,
+    paddingTop: 14,
   },
   exampleLabel: {
     color: Colors.textMuted,
-    fontSize: 11,
+    fontSize: 10,
     textTransform: "uppercase" as const,
+    letterSpacing: 0.6,
   },
   exampleText: {
     color: Colors.terminalGreen,
     fontFamily: monoFont,
-    fontSize: 13,
-    marginTop: 6,
+    fontSize: 15,
+    marginTop: 8,
   },
   whyBox: {
     marginTop: 12,
-    backgroundColor: Colors.accent + "10",
-    borderRadius: 10,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: Colors.accent + "25",
+    paddingTop: 12,
   },
   whyLabel: {
     color: Colors.accent,
-    fontSize: 11,
+    fontSize: 10,
     textTransform: "uppercase" as const,
+    letterSpacing: 0.6,
   },
   whyText: {
     color: Colors.text,
-    fontSize: 13,
-    lineHeight: 20,
-    marginTop: 6,
+    fontSize: 14,
+    lineHeight: 22,
+    marginTop: 8,
   },
   hintBox: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 8,
     marginTop: 12,
-    backgroundColor: Colors.warning + "10",
-    borderRadius: 8,
-    padding: 10,
-  },
-  hintText: {
-    fontSize: 13,
-    color: Colors.warning,
-    flex: 1,
-  },
-  terminalArea: {
-    flex: 1,
-    marginHorizontal: 16,
-    backgroundColor: "#0A0E14",
-    borderRadius: 12,
-    overflow: "hidden",
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    padding: 12,
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  terminalScroll: {
+  hintText: {
+    fontSize: 14,
+    color: Colors.warning,
     flex: 1,
+    lineHeight: 21,
+  },
+  lessonTerminalWrap: {
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    backgroundColor: Colors.background,
+  },
+  terminalArea: {
+    backgroundColor: "#0A0E14",
+    borderRadius: 20,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: Colors.border,
+    minHeight: 220,
   },
   terminalContent: {
     padding: 12,
   },
   termLine: {
     fontFamily: monoFont,
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 20,
     color: Colors.text,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   promptLine: {
     color: Colors.accent,
@@ -478,21 +497,21 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: "rgba(48, 54, 61, 0.5)",
     backgroundColor: "#080C12",
   },
   promptChar: {
     fontFamily: monoFont,
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.accent,
   },
   input: {
     flex: 1,
     fontFamily: monoFont,
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.terminalGreen,
     padding: 0,
   },

@@ -42,6 +42,7 @@ interface TerminalViewProps {
   initialCwd?: string;
   initialDirectories?: Record<string, string[]>;
   initialFiles?: Record<string, string>;
+  minHeight?: number;
 }
 
 const DEFAULT_DIRECTORIES: Record<string, string[]> = {
@@ -123,6 +124,7 @@ export default function TerminalView({
   initialCwd = "/home/user",
   initialDirectories,
   initialFiles,
+  minHeight = 120,
 }: TerminalViewProps) {
   const [lines, setLines] = useState<TerminalLine[]>(initialLines);
   const [input, setInput] = useState("");
@@ -564,7 +566,7 @@ export default function TerminalView({
   }
 
   return (
-    <Pressable style={styles.container} onPress={() => inputRef.current?.focus()}>
+    <Pressable style={[styles.container, { minHeight }]} onPress={() => inputRef.current?.focus()}>
       <ScrollView
         ref={scrollRef}
         style={styles.scrollView}
@@ -626,16 +628,13 @@ const monoFont = Platform.select({
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: "#0A0E14",
     borderRadius: 12,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  scrollView: {
-    flex: 1,
-  },
+  scrollView: {},
   scrollContent: {
     padding: 12,
     paddingBottom: 4,

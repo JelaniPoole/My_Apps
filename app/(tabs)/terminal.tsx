@@ -1,6 +1,7 @@
-import React from "react";
-import { View, Text, StyleSheet, Platform, KeyboardAvoidingView } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, StyleSheet, Platform, KeyboardAvoidingView, Keyboard } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { useProgress } from "@/lib/progress-context";
@@ -8,8 +9,22 @@ import TerminalView from "@/components/TerminalView";
 
 export default function TrainingGround() {
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const { addTerminalCommand } = useProgress();
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const webTop = Platform.OS === "web" ? 67 : 0;
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvent, () => setIsKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setIsKeyboardVisible(false));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   return (
     <KeyboardAvoidingView
@@ -21,13 +36,26 @@ export default function TrainingGround() {
         <Text style={styles.headerTitle}>Training Ground</Text>
         <Text style={styles.headerSubtitle}>Practice freely</Text>
       </View>
-      <View style={[styles.terminalWrap, { marginBottom: Platform.OS === "web" ? 80 : insets.bottom + 60 }]}>
+      <View
+        style={[
+          styles.terminalWrap,
+          {
+            paddingBottom:
+              Platform.OS === "web"
+                ? 18
+                : isKeyboardVisible
+                ? 0
+                : Math.max(tabBarHeight - insets.bottom + 8, 12),
+          },
+        ]}
+      >
         <TerminalView
           welcomeMessage={"hunter@system:~$ Welcome, Hunter.\nType 'help' for available commands.\n"}
           prompt="hunter@system:~$"
+          minHeight={320}
           onCommand={(cmd) => {
-          addTerminalCommand(cmd);
-        }}
+            addTerminalCommand(cmd);
+          }}
         />
       </View>
     </KeyboardAvoidingView>
@@ -48,5 +76,5 @@ const styles = StyleSheet.create({
   },
   headerTitle: { color: Colors.terminalGreen, fontSize: 18, fontWeight: "700" },
   headerSubtitle: { color: Colors.textSecondary, fontSize: 12, marginLeft: "auto" },
-  terminalWrap: { flex: 1, marginHorizontal: 12, marginVertical: 8 },
+  terminalWrap: { flex: 1, marginHorizontal: 12, marginTop: 8 },
 });
