@@ -597,15 +597,16 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   modalBackdropKeyboard: {
-    justifyContent: "flex-start",
-    paddingTop: 24,
+    justifyContent: "flex-end",
+    paddingTop: 12,
+    paddingBottom: 0,
   },
   modalAvoidingView: {
     justifyContent: "center",
   },
   modalAvoidingViewKeyboard: {
     flex: 1,
-    justifyContent: "flex-start",
+    justifyContent: "flex-end",
   },
   modalCard: {
     backgroundColor: colors.card,
@@ -616,7 +617,7 @@ const styles = StyleSheet.create({
     maxHeight: "86%",
   },
   modalCardKeyboard: {
-    maxHeight: "72%",
+    maxHeight: "95%",
   },
   modalScrollContent: {
     paddingBottom: 4,
