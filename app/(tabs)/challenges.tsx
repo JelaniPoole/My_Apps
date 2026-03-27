@@ -121,6 +121,30 @@ export default function BossRaids() {
     );
   };
 
+  const getTask = (challenge: RaidChallenge) => {
+    return (challenge as any).task ?? "Use the right command to clear the encounter.";
+  };
+
+  const getBossName = (challenge: RaidChallenge) => {
+    return (challenge as any).bossName ?? challenge.title;
+  };
+
+  const getEncounterCopy = (challenge: RaidChallenge) => {
+    const difficulty = (challenge as any).difficulty;
+    switch (difficulty) {
+      case "E":
+        return "This raid is testing basic command recognition. Read the task carefully and match the command to the job.";
+      case "D":
+        return "This boss expects you to understand the command family, not just memorize one answer. Focus on what action the shell needs.";
+      case "C":
+        return "This encounter mixes command knowledge with intent. Think about what the system is asking you to inspect, filter, or update.";
+      case "B":
+        return "This raid expects stronger terminal instincts. Use the exact tool that best matches the workflow in the prompt.";
+      default:
+        return "This boss is testing whether you can pick the right Linux command for the situation, not just memorize a name.";
+    }
+  };
+
   const getRankColor = (difficulty?: string) => {
     if (!difficulty) {
       return colors.gold;
@@ -349,6 +373,7 @@ export default function BossRaids() {
                   >
                     Rank {(activeChallenge as any).difficulty ?? "?"}
                   </Text>
+                  <Text style={styles.modalBossName}>{getBossName(activeChallenge)}</Text>
                   <Text style={styles.modalTitle}>{activeChallenge.title}</Text>
                   <Text style={styles.modalDescription}>
                     {(activeChallenge as any).description ??
@@ -358,10 +383,9 @@ export default function BossRaids() {
 
                   <View style={styles.contextCard}>
                     <Text style={styles.contextLabel}>Encounter</Text>
-                    <Text style={styles.contextText}>
-                      This boss is testing whether you can pick the right Linux
-                      command for this situation, not just memorize a name.
-                    </Text>
+                    <Text style={styles.contextText}>{getEncounterCopy(activeChallenge)}</Text>
+                    <Text style={styles.contextSubLabel}>Your Objective</Text>
+                    <Text style={styles.taskText}>{getTask(activeChallenge)}</Text>
                     <Text style={styles.contextSubLabel}>What To Think About</Text>
                     <Text style={styles.contextText}>
                       Focus on what action the prompt is asking for, then choose
@@ -636,6 +660,14 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginBottom: 10,
   },
+  modalBossName: {
+    color: colors.subtext,
+    fontSize: 13,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
   modalDescription: {
     color: colors.subtext,
     fontSize: 15,
@@ -671,6 +703,12 @@ const styles = StyleSheet.create({
     color: colors.subtext,
     fontSize: 14,
     lineHeight: 21,
+  },
+  taskText: {
+    color: colors.text,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: "600",
   },
   hintCard: {
     backgroundColor: colors.cardAlt,

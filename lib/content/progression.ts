@@ -48,12 +48,15 @@ export function getDailyQuests(dateStr: string): DailyQuest[] {
 export const roadmapCategories: CategoryRoadmap[] = [
   { name: "Navigation", icon: "location", lessons: ["1", "11"], challenges: ["c1", "c2"], statType: "AGI" },
   { name: "Files", icon: "document", lessons: ["2", "3"], challenges: ["c3", "c4"], statType: "STR" },
-  { name: "Viewing", icon: "eye", lessons: ["4", "12"], challenges: ["c7"], statType: "INT" },
+  { name: "Viewing", icon: "eye", lessons: ["4", "12", "16"], challenges: ["c7", "c12"], statType: "INT" },
   { name: "Pipes & Text", icon: "git-merge", lessons: ["5", "6", "13"], challenges: ["c5", "c6", "c8"], statType: "INT" },
   { name: "Permissions", icon: "shield", lessons: ["7"], challenges: [], statType: "DEF" },
   { name: "Processes", icon: "activity", lessons: ["8"], challenges: ["c9"], statType: "VIT" },
   { name: "System", icon: "server", lessons: ["9", "14"], challenges: ["c10"], statType: "VIT" },
-  { name: "Git", icon: "logo-github", lessons: ["10", "15"], challenges: ["c11"], statType: "INT" },
+  { name: "Packages", icon: "cube", lessons: ["17"], challenges: ["c13"], statType: "VIT" },
+  { name: "Logs", icon: "reader", lessons: ["18"], challenges: ["c14"], statType: "INT" },
+  { name: "Git", icon: "logo-github", lessons: ["10", "15", "19"], challenges: ["c11", "c15"], statType: "INT" },
+  { name: "Network", icon: "globe", lessons: [], challenges: ["c16"], statType: "AGI" },
   { name: "Advanced", icon: "construct", lessons: ["20"], challenges: ["c50"], statType: "AGI" },
 ];
 
