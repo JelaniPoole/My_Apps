@@ -29,6 +29,7 @@ const colors = {
 };
 
 type RaidChallenge = (typeof orderedChallenges)[number];
+const EMPTY_CHALLENGE_IDS: string[] = [];
 
 const rankColors: Record<string, string> = {
   E: "#7CFF6B",
@@ -41,12 +42,11 @@ const rankColors: Record<string, string> = {
 
 export default function BossRaids() {
   const progressContext = useProgress();
-  const progress = progressContext?.progress ?? {
-    completedChallenges: [] as string[],
-  };
+  const completedChallengeIds =
+    progressContext?.completedChallenges ?? EMPTY_CHALLENGE_IDS;
   const completeChallenge =
     progressContext?.completeChallenge ?? (() => undefined);
-  const addXP = progressContext?.addXP ?? (() => undefined);
+  const addXp = progressContext?.addXp ?? (() => undefined);
 
   const [listMode, setListMode] = useState<"active" | "completed">("active");
   const [activeChallenge, setActiveChallenge] = useState<RaidChallenge | null>(
@@ -61,17 +61,17 @@ export default function BossRaids() {
   const activeChallenges = useMemo(
     () =>
       orderedChallenges.filter(
-        (challenge) => !progress.completedChallenges.includes(challenge.id),
+        (challenge) => !completedChallengeIds.includes(challenge.id),
       ),
-    [progress.completedChallenges],
+    [completedChallengeIds],
   );
 
   const completedChallenges = useMemo(
     () =>
       orderedChallenges.filter((challenge) =>
-        progress.completedChallenges.includes(challenge.id),
+        completedChallengeIds.includes(challenge.id),
       ),
-    [progress.completedChallenges],
+    [completedChallengeIds],
   );
 
   const visibleChallenges =
@@ -145,9 +145,9 @@ export default function BossRaids() {
     );
 
     if (accepted.includes(normalized)) {
-      if (!progress.completedChallenges.includes(activeChallenge.id)) {
+      if (!completedChallengeIds.includes(activeChallenge.id)) {
         completeChallenge(activeChallenge.id);
-        addXP(getReward(activeChallenge));
+        addXp(getReward(activeChallenge));
       }
       setFeedback("Raid cleared.");
       setShowVictory(true);
@@ -270,7 +270,7 @@ export default function BossRaids() {
         ) : null}
 
         {visibleChallenges.map((challenge) => {
-          const cleared = progress.completedChallenges.includes(challenge.id);
+          const cleared = completedChallengeIds.includes(challenge.id);
           const rankColor = getRankColor((challenge as any).difficulty);
           return (
             <TouchableOpacity
@@ -614,10 +614,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: 22,
-    maxHeight: "86%",
+    maxHeight: "100%",
   },
   modalCardKeyboard: {
-    maxHeight: "95%",
+    maxHeight: "98%",
   },
   modalScrollContent: {
     paddingBottom: 4,
