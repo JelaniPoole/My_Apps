@@ -1,4 +1,4 @@
-import type { CategoryRoadmap, DailyQuest } from "./types";
+import type { Achievement, CategoryRoadmap, DailyQuest } from "./types";
 
 export const RANKS = [
   { rank: "E", title: "E-Rank Hunter", minLevel: 1, color: "#808080" },
@@ -72,4 +72,118 @@ export function getRoadmapProgress(completedLessons: string[], completedChalleng
   });
 
   return progress;
+}
+
+interface AchievementProgressInput {
+  completedLessons: string[];
+  completedChallenges: string[];
+  currentStreak: number;
+  terminalHistory: string[];
+}
+
+export function getAchievements({
+  completedLessons,
+  completedChallenges,
+  currentStreak,
+  terminalHistory,
+}: AchievementProgressInput): Achievement[] {
+  const uniqueCommands = new Set(
+    terminalHistory.map((command) => command.trim().split(/\s+/)[0]).filter(Boolean),
+  ).size;
+  const grepUses = terminalHistory.filter((command) =>
+    command.trim().toLowerCase().startsWith("grep "),
+  ).length;
+  const gitUses = terminalHistory.filter((command) =>
+    command.trim().toLowerCase().startsWith("git "),
+  ).length;
+
+  const baseAchievements = [
+    {
+      id: "first_dungeon",
+      title: "Dungeon Initiate",
+      description: "Clear your first lesson dungeon.",
+      icon: "map",
+      color: "#64D2FF",
+      target: 1,
+      progress: completedLessons.length,
+    },
+    {
+      id: "first_raid",
+      title: "Boss Breaker",
+      description: "Defeat your first raid boss.",
+      icon: "flash",
+      color: "#FF8A5B",
+      target: 1,
+      progress: completedChallenges.length,
+    },
+    {
+      id: "lesson_mastery",
+      title: "Path Climber",
+      description: "Clear 5 lesson dungeons.",
+      icon: "trending-up",
+      color: "#39FF14",
+      target: 5,
+      progress: completedLessons.length,
+    },
+    {
+      id: "raid_hunter",
+      title: "Raid Hunter",
+      description: "Defeat 5 raid bosses.",
+      icon: "shield",
+      color: "#FFC83D",
+      target: 5,
+      progress: completedChallenges.length,
+    },
+    {
+      id: "streak_keeper",
+      title: "Stay Active",
+      description: "Keep a 3-day streak alive.",
+      icon: "flame",
+      color: "#FFB800",
+      target: 3,
+      progress: currentStreak,
+    },
+    {
+      id: "terminal_apprentice",
+      title: "Terminal Apprentice",
+      description: "Run 25 commands in total.",
+      icon: "terminal",
+      color: "#64D2FF",
+      target: 25,
+      progress: terminalHistory.length,
+    },
+    {
+      id: "tool_collector",
+      title: "Tool Collector",
+      description: "Use 12 unique commands.",
+      icon: "albums",
+      color: "#A78BFA",
+      target: 12,
+      progress: uniqueCommands,
+    },
+    {
+      id: "grep_master",
+      title: "Grep Master",
+      description: "Use `grep` 10 times.",
+      icon: "search",
+      color: "#4DA6FF",
+      target: 10,
+      progress: grepUses,
+    },
+    {
+      id: "git_scout",
+      title: "Git Scout",
+      description: "Use Git commands 5 times.",
+      icon: "git-branch",
+      color: "#FF6B35",
+      target: 5,
+      progress: gitUses,
+    },
+  ];
+
+  return baseAchievements.map((achievement) => ({
+    ...achievement,
+    progress: Math.min(achievement.progress, achievement.target),
+    unlocked: achievement.progress >= achievement.target,
+  }));
 }

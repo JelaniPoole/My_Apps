@@ -14,7 +14,12 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { router } from "expo-router";
 import Colors from "@/constants/colors";
 import { useProgress } from "@/lib/progress-context";
-import { getDailyQuests, getNextLessonRecommendation } from "@/lib/linux-data";
+import {
+  getAchievements,
+  getDailyQuests,
+  getNextChallengeRecommendation,
+  getNextLessonRecommendation,
+} from "@/lib/linux-data";
 
 const STAT_META: Record<string, { label: string; icon: string; color: string }> = {
   STR: { label: "STR", icon: "fitness", color: Colors.statSTR || "#FF6B35" },
@@ -111,6 +116,7 @@ export default function HunterDashboard() {
     totalPower,
     completedLessons,
     completedChallenges,
+    terminalHistory,
     dailyProgress,
     addXp,
     claimDailyQuest,
@@ -120,6 +126,15 @@ export default function HunterDashboard() {
   const today = new Date().toDateString();
   const quests = getDailyQuests(today);
   const nextLesson = getNextLessonRecommendation(completedLessons);
+  const nextRaid = getNextChallengeRecommendation(completedChallenges);
+  const achievements = getAchievements({
+    completedLessons,
+    completedChallenges,
+    currentStreak,
+    terminalHistory,
+  });
+  const unlockedAchievements = achievements.filter((achievement) => achievement.unlocked);
+  const nextAchievement = achievements.find((achievement) => !achievement.unlocked) ?? null;
 
   function getQuestProgress(quest: { type: string }) {
     switch (quest.type) {
@@ -234,33 +249,102 @@ export default function HunterDashboard() {
         </Animated.View>
 
         <Animated.View entering={FadeInDown.duration(600).delay(300)}>
-          {nextLesson ? (
+          {nextLesson || nextRaid ? (
             <>
               <View style={styles.sectionHeader}>
                 <Ionicons name="compass" size={18} color={Colors.accent} />
                 <Text style={styles.sectionTitle}>Recommended Next</Text>
               </View>
-              <Pressable onPress={() => router.push(`/lesson/${nextLesson.id}`)} style={({ pressed }) => [styles.recommendCard, pressed && styles.pressed]}>
-                <LinearGradient colors={[Colors.accent + "18", Colors.surface]} style={styles.recommendGradient}>
-                  <View style={styles.recommendTop}>
-                    <View style={styles.recommendIcon}>
-                      <Ionicons name={nextLesson.icon as any} size={22} color={Colors.accent} />
-                    </View>
-                    <View style={styles.recommendBody}>
-                      <Text style={styles.recommendEyebrow}>{nextLesson.category}</Text>
-                      <Text style={styles.recommendTitle}>{nextLesson.title}</Text>
-                      <Text style={styles.recommendDesc}>{nextLesson.description}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.recommendFooter}>
-                    <Text style={styles.recommendMeta}>{nextLesson.steps.length} steps</Text>
-                    <Text style={styles.recommendMeta}>+{nextLesson.xpReward} XP</Text>
-                    <Text style={styles.recommendAction}>Start Lesson</Text>
-                  </View>
-                </LinearGradient>
-              </Pressable>
+              <View style={styles.activePathColumn}>
+                {nextLesson ? (
+                  <Pressable onPress={() => router.push(`/lesson/${nextLesson.id}`)} style={({ pressed }) => [styles.recommendCard, pressed && styles.pressed]}>
+                    <LinearGradient colors={[Colors.accent + "18", Colors.surface]} style={styles.recommendGradient}>
+                      <View style={styles.recommendTop}>
+                        <View style={styles.recommendIcon}>
+                          <Ionicons name={nextLesson.icon as any} size={22} color={Colors.accent} />
+                        </View>
+                        <View style={styles.recommendBody}>
+                          <Text style={styles.recommendEyebrow}>Next Lesson · {nextLesson.category}</Text>
+                          <Text style={styles.recommendTitle}>{nextLesson.title}</Text>
+                          <Text style={styles.recommendDesc}>{nextLesson.description}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.recommendFooter}>
+                        <Text style={styles.recommendMeta}>{nextLesson.steps.length} steps</Text>
+                        <Text style={styles.recommendMeta}>+{nextLesson.xpReward} XP</Text>
+                        <Text style={styles.recommendAction}>Start Lesson</Text>
+                      </View>
+                    </LinearGradient>
+                  </Pressable>
+                ) : null}
+                {nextRaid ? (
+                  <Pressable onPress={() => router.push("/challenges")} style={({ pressed }) => [styles.recommendCard, pressed && styles.pressed]}>
+                    <LinearGradient colors={[Colors.warning + "18", Colors.surface]} style={styles.recommendGradient}>
+                      <View style={styles.recommendTop}>
+                        <View style={[styles.recommendIcon, { borderColor: Colors.warning + "30" }]}>
+                          <Ionicons name={nextRaid.icon as any} size={22} color={Colors.warning} />
+                        </View>
+                        <View style={styles.recommendBody}>
+                          <Text style={[styles.recommendEyebrow, { color: Colors.warning }]}>
+                            Next Raid · Rank {nextRaid.difficulty}
+                          </Text>
+                          <Text style={styles.recommendTitle}>{nextRaid.title}</Text>
+                          <Text style={styles.recommendDesc}>{nextRaid.task}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.recommendFooter}>
+                        <Text style={styles.recommendMeta}>Boss fight</Text>
+                        <Text style={styles.recommendMeta}>+{nextRaid.xpReward} XP</Text>
+                        <Text style={[styles.recommendAction, { color: Colors.warning }]}>Open Raids</Text>
+                      </View>
+                    </LinearGradient>
+                  </Pressable>
+                ) : null}
+              </View>
             </>
           ) : null}
+
+          <View style={styles.sectionHeader}>
+            <Ionicons name="ribbon" size={18} color={Colors.xpGold} />
+            <Text style={styles.sectionTitle}>Achievement Track</Text>
+          </View>
+          <View style={styles.achievementSummaryCard}>
+            <View style={styles.achievementSummaryTop}>
+              <View>
+                <Text style={styles.achievementSummaryValue}>
+                  {unlockedAchievements.length}/{achievements.length}
+                </Text>
+                <Text style={styles.achievementSummaryLabel}>Achievements Unlocked</Text>
+              </View>
+              <Ionicons name="trophy" size={22} color={Colors.xpGold} />
+            </View>
+            {nextAchievement ? (
+              <>
+                <Text style={styles.achievementNextTitle}>{nextAchievement.title}</Text>
+                <Text style={styles.achievementNextDesc}>{nextAchievement.description}</Text>
+                <View style={styles.questProgressRow}>
+                  <View style={styles.questBarBg}>
+                    <View
+                      style={[
+                        styles.questBarFill,
+                        {
+                          width: `${(nextAchievement.progress / nextAchievement.target) * 100}%`,
+                          backgroundColor: nextAchievement.color,
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.questProgressText}>
+                    {nextAchievement.progress}/{nextAchievement.target}
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <Text style={styles.achievementNextDesc}>
+                You have cleared every current achievement target. Time to add more.
+              </Text>
+            )}
+          </View>
 
           <View style={styles.sectionHeader}>
             <Ionicons name="today" size={18} color={Colors.warning} />
@@ -365,6 +449,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sectionTitle: { color: Colors.text, fontSize: 16, fontWeight: "700" },
+  activePathColumn: {
+    gap: 10,
+  },
   recommendCard: {
     marginHorizontal: 16,
     borderRadius: 16,
@@ -460,6 +547,42 @@ const styles = StyleSheet.create({
   statBarFill: { height: "100%", borderRadius: 4 },
   statValue: { fontSize: 14, fontWeight: "700", width: 30, textAlign: "right" },
 
+  achievementSummaryCard: {
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  achievementSummaryTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  achievementSummaryValue: {
+    color: Colors.text,
+    fontSize: 22,
+    fontWeight: "800",
+  },
+  achievementSummaryLabel: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  achievementNextTitle: {
+    color: Colors.text,
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 14,
+  },
+  achievementNextDesc: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 6,
+  },
+
   questCard: {
     flexDirection: "row",
     backgroundColor: Colors.surface,
@@ -477,7 +600,7 @@ const styles = StyleSheet.create({
   questTitle: { color: Colors.text, fontSize: 14, fontWeight: "600" },
   questTitleDone: { textDecorationLine: "line-through", color: Colors.textMuted },
   questDesc: { color: Colors.textSecondary, fontSize: 12, marginTop: 2 },
-  questProgressRow: { flexDirection: "row", alignItems: "center", marginTop: 6, gap: 8 },
+  questProgressRow: { flexDirection: "row", alignItems: "center", marginTop: 10, gap: 8 },
   questBarBg: { flex: 1, height: 4, backgroundColor: Colors.background, borderRadius: 2, overflow: "hidden" },
   questBarFill: { height: "100%", backgroundColor: Colors.accent, borderRadius: 2 },
   questProgressText: { color: Colors.textMuted, fontSize: 11 },

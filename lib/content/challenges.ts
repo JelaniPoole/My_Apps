@@ -55,3 +55,10 @@ export const orderedChallenges = [...challenges].sort((left, right) => {
 
   return left.title.localeCompare(right.title);
 });
+
+export function getNextChallengeRecommendation(completedChallenges: string[]) {
+  return (
+    orderedChallenges.find((challenge) => !completedChallenges.includes(challenge.id)) ??
+    null
+  );
+}

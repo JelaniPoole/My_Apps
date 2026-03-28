@@ -71,3 +71,14 @@ export interface DailyQuest {
   type: "lesson" | "challenge" | "terminal" | "any";
   target: number;
 }
+
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  color: string;
+  target: number;
+  progress: number;
+  unlocked: boolean;
+}

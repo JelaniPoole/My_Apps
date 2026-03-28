@@ -11,7 +11,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import Colors from "@/constants/colors";
-import { lessons, challenges, getCommandsByCategory, RANKS } from "@/lib/linux-data";
+import {
+  getAchievements,
+  getCommandsByCategory,
+  RANKS,
+} from "@/lib/linux-data";
 import { useProgress } from "@/lib/progress-context";
 
 const STAT_META: Record<string, { label: string; fullName: string; icon: string; color: string; desc: string }> = {
@@ -44,8 +48,14 @@ export default function StatsScreen() {
   } = useProgress();
   const webTop = Platform.OS === "web" ? 67 : 0;
   const grouped = getCommandsByCategory();
-  const totalCommands = terminalHistory.length;
   const uniqueCommands = new Set(terminalHistory.map((c) => c.split(" ")[0])).size;
+  const achievements = getAchievements({
+    completedLessons,
+    completedChallenges,
+    currentStreak,
+    terminalHistory,
+  });
+  const unlockedAchievements = achievements.filter((achievement) => achievement.unlocked);
 
   return (
     <View style={styles.container}>
@@ -97,27 +107,68 @@ export default function StatsScreen() {
 
         <Animated.View entering={FadeInDown.duration(500).delay(200)}>
           <Text style={styles.sectionTitle}>Achievements</Text>
-          <View style={styles.achieveGrid}>
-            <View style={styles.achieveCard}>
-              <Ionicons name="flame" size={24} color={Colors.warning} />
-              <Text style={styles.achieveValue}>{currentStreak}</Text>
-              <Text style={styles.achieveLabel}>Day Streak</Text>
+          <View style={styles.achievementSummaryCard}>
+            <View style={styles.achievementSummaryHeader}>
+              <View>
+                <Text style={styles.achievementSummaryValue}>
+                  {unlockedAchievements.length}/{achievements.length}
+                </Text>
+                <Text style={styles.achievementSummaryLabel}>Achievements Unlocked</Text>
+              </View>
+              <Ionicons name="trophy" size={24} color={Colors.xpGold} />
             </View>
-            <View style={styles.achieveCard}>
-              <Ionicons name="map" size={24} color={Colors.accent} />
-              <Text style={styles.achieveValue}>{completedLessons.length}/{lessons.length}</Text>
-              <Text style={styles.achieveLabel}>Dungeons</Text>
-            </View>
-            <View style={styles.achieveCard}>
-              <Ionicons name="skull" size={24} color={Colors.error} />
-              <Text style={styles.achieveValue}>{completedChallenges.length}/{challenges.length}</Text>
-              <Text style={styles.achieveLabel}>Bosses</Text>
-            </View>
-            <View style={styles.achieveCard}>
-              <Ionicons name="terminal" size={24} color={Colors.terminalGreen} />
-              <Text style={styles.achieveValue}>{totalCommands}</Text>
-              <Text style={styles.achieveLabel}>Commands</Text>
-            </View>
+            <Text style={styles.achievementSummaryText}>
+              Clear lessons, defeat raids, keep your streak alive, and use more commands to unlock every badge.
+            </Text>
+          </View>
+          <View style={styles.achievementList}>
+            {achievements.map((achievement) => {
+              const pct = Math.min(achievement.progress / achievement.target, 1);
+
+              return (
+                <View
+                  key={achievement.id}
+                  style={[
+                    styles.achievementCard,
+                    achievement.unlocked && styles.achievementCardUnlocked,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.achievementIcon,
+                      { backgroundColor: achievement.color + "20" },
+                    ]}
+                  >
+                    <Ionicons
+                      name={achievement.icon as any}
+                      size={20}
+                      color={achievement.color}
+                    />
+                  </View>
+                  <View style={styles.achievementBody}>
+                    <View style={styles.achievementRow}>
+                      <Text style={styles.achievementTitle}>{achievement.title}</Text>
+                      {achievement.unlocked ? (
+                        <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
+                      ) : (
+                        <Text style={styles.achievementProgressValue}>
+                          {achievement.progress}/{achievement.target}
+                        </Text>
+                      )}
+                    </View>
+                    <Text style={styles.achievementDescription}>{achievement.description}</Text>
+                    <View style={styles.achievementBarBg}>
+                      <View
+                        style={[
+                          styles.achievementBarFill,
+                          { width: `${pct * 100}%`, backgroundColor: achievement.color },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
           </View>
         </Animated.View>
 
@@ -201,18 +252,71 @@ const styles = StyleSheet.create({
   statDetailLabel: { color: Colors.text, fontSize: 11, fontWeight: "600", marginTop: 2 },
   statDetailDesc: { color: Colors.textMuted, fontSize: 9, marginTop: 1 },
 
-  achieveGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginHorizontal: 16 },
-  achieveCard: {
+  achievementSummaryCard: {
     backgroundColor: Colors.surface,
     borderRadius: 14,
     padding: 14,
-    width: "47%",
-    alignItems: "center",
+    marginHorizontal: 16,
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  achieveValue: { color: Colors.text, fontSize: 20, fontWeight: "700", marginTop: 6 },
-  achieveLabel: { color: Colors.textMuted, fontSize: 12, marginTop: 2 },
+  achievementSummaryHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  achievementSummaryValue: { color: Colors.text, fontSize: 24, fontWeight: "800" },
+  achievementSummaryLabel: { color: Colors.textMuted, fontSize: 12, marginTop: 2 },
+  achievementSummaryText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 10,
+  },
+  achievementList: { marginHorizontal: 16, marginTop: 10, gap: 10 },
+  achievementCard: {
+    flexDirection: "row",
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  achievementCardUnlocked: {
+    borderColor: Colors.success + "35",
+    backgroundColor: Colors.success + "08",
+  },
+  achievementIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  achievementBody: { flex: 1 },
+  achievementRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  achievementTitle: { color: Colors.text, fontSize: 15, fontWeight: "700", flex: 1 },
+  achievementProgressValue: { color: Colors.textMuted, fontSize: 12, fontWeight: "600" },
+  achievementDescription: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  achievementBarBg: {
+    height: 6,
+    backgroundColor: Colors.background,
+    borderRadius: 3,
+    overflow: "hidden",
+    marginTop: 10,
+  },
+  achievementBarFill: { height: "100%", borderRadius: 3 },
 
   rankRow: {
     flexDirection: "row",
