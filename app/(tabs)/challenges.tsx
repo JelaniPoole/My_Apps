@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { orderedChallenges } from "@/lib/linux-data";
 import { useProgress } from "@/lib/progress-context";
@@ -41,6 +42,7 @@ const rankColors: Record<string, string> = {
 };
 
 export default function BossRaids() {
+  const insets = useSafeAreaInsets();
   const progressContext = useProgress();
   const completedChallengeIds =
     progressContext?.completedChallenges ?? EMPTY_CHALLENGE_IDS;
@@ -212,7 +214,12 @@ export default function BossRaids() {
     <View style={styles.container}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: insets.top + 12,
+          },
+        ]}
       >
         <View style={styles.header}>
           <Text style={styles.title}>Raid Bosses</Text>

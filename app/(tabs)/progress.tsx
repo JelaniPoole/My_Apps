@@ -5,8 +5,10 @@ import {
   View,
   ScrollView,
   Platform,
+  Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -121,55 +123,26 @@ export default function StatsScreen() {
               Clear lessons, defeat raids, keep your streak alive, and use more commands to unlock every badge.
             </Text>
           </View>
-          <View style={styles.achievementList}>
-            {achievements.map((achievement) => {
-              const pct = Math.min(achievement.progress / achievement.target, 1);
-
-              return (
-                <View
-                  key={achievement.id}
-                  style={[
-                    styles.achievementCard,
-                    achievement.unlocked && styles.achievementCardUnlocked,
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.achievementIcon,
-                      { backgroundColor: achievement.color + "20" },
-                    ]}
-                  >
-                    <Ionicons
-                      name={achievement.icon as any}
-                      size={20}
-                      color={achievement.color}
-                    />
-                  </View>
-                  <View style={styles.achievementBody}>
-                    <View style={styles.achievementRow}>
-                      <Text style={styles.achievementTitle}>{achievement.title}</Text>
-                      {achievement.unlocked ? (
-                        <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
-                      ) : (
-                        <Text style={styles.achievementProgressValue}>
-                          {achievement.progress}/{achievement.target}
-                        </Text>
-                      )}
-                    </View>
-                    <Text style={styles.achievementDescription}>{achievement.description}</Text>
-                    <View style={styles.achievementBarBg}>
-                      <View
-                        style={[
-                          styles.achievementBarFill,
-                          { width: `${pct * 100}%`, backgroundColor: achievement.color },
-                        ]}
-                      />
-                    </View>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
+          <Pressable
+            style={({ pressed }) => [
+              styles.achievementLinkCard,
+              pressed && styles.pressed,
+            ]}
+            onPress={() => router.push("/achievements")}
+          >
+            <View style={styles.achievementLinkLeft}>
+              <View style={styles.achievementLinkIcon}>
+                <Ionicons name="ribbon" size={18} color={Colors.xpGold} />
+              </View>
+              <View style={styles.achievementLinkCopy}>
+                <Text style={styles.achievementLinkTitle}>Open Achievement Journal</Text>
+                <Text style={styles.achievementLinkText}>
+                  View all {achievements.length} achievements, unlocked badges, and in-progress milestones.
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          </Pressable>
         </Animated.View>
 
         <Animated.View entering={FadeInDown.duration(500).delay(250)}>
@@ -273,50 +246,43 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     marginTop: 10,
   },
-  achievementList: { marginHorizontal: 16, marginTop: 10, gap: 10 },
-  achievementCard: {
+  achievementLinkCard: {
+    marginHorizontal: 16,
+    marginTop: 10,
     flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: Colors.surface,
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  achievementCardUnlocked: {
-    borderColor: Colors.success + "35",
-    backgroundColor: Colors.success + "08",
+  pressed: {
+    opacity: 0.88,
   },
-  achievementIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  achievementLinkLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  achievementLinkIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.xpGold + "18",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
   },
-  achievementBody: { flex: 1 },
-  achievementRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  achievementTitle: { color: Colors.text, fontSize: 15, fontWeight: "700", flex: 1 },
-  achievementProgressValue: { color: Colors.textMuted, fontSize: 12, fontWeight: "600" },
-  achievementDescription: {
+  achievementLinkCopy: { flex: 1 },
+  achievementLinkTitle: { color: Colors.text, fontSize: 15, fontWeight: "700" },
+  achievementLinkText: {
     color: Colors.textSecondary,
     fontSize: 13,
     lineHeight: 18,
     marginTop: 4,
   },
-  achievementBarBg: {
-    height: 6,
-    backgroundColor: Colors.background,
-    borderRadius: 3,
-    overflow: "hidden",
-    marginTop: 10,
-  },
-  achievementBarFill: { height: "100%", borderRadius: 3 },
 
   rankRow: {
     flexDirection: "row",
