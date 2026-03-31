@@ -148,6 +148,7 @@ export default function Dungeons() {
   const activeLessons = orderedLessons.filter((lesson) => !completedLessons.includes(lesson.id));
   const clearedLessons = orderedLessons.filter((lesson) => completedLessons.includes(lesson.id));
   const visibleLessons = listMode === "active" ? activeLessons : clearedLessons;
+  const focusLesson = activeLessons[0] ?? null;
 
   if (activeLesson) {
     const step = activeLesson.steps[currentStep];
@@ -284,6 +285,29 @@ export default function Dungeons() {
         </View>
         <Text style={styles.pageSubtitle}>Follow the lesson path, then revisit cleared dungeons whenever you want.</Text>
 
+        {listMode === "active" && focusLesson ? (
+          <Pressable
+            onPress={() => {
+              setActiveLesson(focusLesson);
+              setCurrentStep(0);
+              setShowComplete(false);
+            }}
+            style={({ pressed }) => [styles.focusCard, pressed && styles.pressed]}
+          >
+            <View style={styles.focusHeader}>
+              <Text style={styles.focusEyebrow}>Focus Next</Text>
+              <Text style={[styles.focusRank, { color: diffColors[focusLesson.difficulty] }]}>
+                Rank {focusLesson.difficulty}
+              </Text>
+            </View>
+            <Text style={styles.focusTitle}>{focusLesson.title}</Text>
+            <Text style={styles.focusText}>
+              Best next lesson in the path. It builds your {focusLesson.statReward.type} track through {focusLesson.category.toLowerCase()}.
+            </Text>
+            <Text style={styles.focusAction}>Enter {focusLesson.dungeonName}</Text>
+          </Pressable>
+        ) : null}
+
         <View style={styles.segmentWrap}>
           <Pressable
             onPress={() => setListMode("active")}
@@ -384,6 +408,49 @@ const styles = StyleSheet.create({
   pageHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 20, marginTop: 16 },
   pageTitle: { color: Colors.text, fontSize: 24, fontWeight: "800" },
   pageSubtitle: { color: Colors.textSecondary, fontSize: 14, marginHorizontal: 20, marginTop: 4, marginBottom: 16 },
+  focusCard: {
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    marginBottom: 14,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.primary + "30",
+  },
+  focusHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  focusEyebrow: {
+    color: Colors.primary,
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  focusRank: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  focusTitle: {
+    color: Colors.text,
+    fontSize: 18,
+    fontWeight: "700",
+    marginTop: 8,
+  },
+  focusText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 8,
+  },
+  focusAction: {
+    color: Colors.primary,
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 12,
+  },
   segmentWrap: {
     flexDirection: "row",
     backgroundColor: Colors.surface,

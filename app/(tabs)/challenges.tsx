@@ -78,6 +78,7 @@ export default function BossRaids() {
 
   const visibleChallenges =
     listMode === "active" ? activeChallenges : completedChallenges;
+  const focusChallenge = activeChallenges[0] ?? null;
 
   const openChallenge = (challenge: RaidChallenge) => {
     setActiveChallenge(challenge);
@@ -225,6 +226,31 @@ export default function BossRaids() {
           <Text style={styles.title}>Raid Bosses</Text>
           <Text style={styles.subtitle}>Defeat elite command encounters.</Text>
         </View>
+
+        {listMode === "active" && focusChallenge ? (
+          <TouchableOpacity
+            activeOpacity={0.9}
+            style={styles.focusCard}
+            onPress={() => openChallenge(focusChallenge)}
+          >
+            <View style={styles.focusHeader}>
+              <Text style={styles.focusEyebrow}>Focus Next</Text>
+              <Text
+                style={[
+                  styles.focusRank,
+                  { color: getRankColor((focusChallenge as any).difficulty) },
+                ]}
+              >
+                Rank {(focusChallenge as any).difficulty ?? "?"}
+              </Text>
+            </View>
+            <Text style={styles.focusTitle}>{focusChallenge.title}</Text>
+            <Text style={styles.focusText}>
+              Best next boss check. This raid tests whether you can apply the next command skill cleanly under pressure.
+            </Text>
+            <Text style={styles.focusAction}>Open encounter</Text>
+          </TouchableOpacity>
+        ) : null}
 
         <View style={styles.progressCard}>
           <View style={styles.progressRow}>
@@ -485,6 +511,48 @@ const styles = StyleSheet.create({
     color: colors.subtext,
     fontSize: 15,
     marginTop: 6,
+  },
+  focusCard: {
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.accent + "40",
+    padding: 18,
+    marginBottom: 18,
+  },
+  focusHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  focusEyebrow: {
+    color: colors.accent,
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  focusRank: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  focusTitle: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: "800",
+    marginTop: 8,
+  },
+  focusText: {
+    color: colors.subtext,
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 8,
+  },
+  focusAction: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 12,
   },
   progressCard: {
     backgroundColor: colors.card,

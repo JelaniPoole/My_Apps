@@ -1,3 +1,5 @@
+import { orderedChallenges } from "./challenges";
+import { orderedLessons } from "./lessons";
 import type { Achievement, CategoryRoadmap, DailyQuest } from "./types";
 
 export const RANKS = [
@@ -45,6 +47,83 @@ export function getDailyQuests(dateStr: string): DailyQuest[] {
   ];
 }
 
+interface AdaptiveDailyQuestInput {
+  completedLessons: string[];
+  completedChallenges: string[];
+  terminalHistory: string[];
+  currentStreak: number;
+}
+
+export function getAdaptiveDailyQuests(
+  dateStr: string,
+  {
+    completedLessons,
+    completedChallenges,
+    terminalHistory,
+    currentStreak,
+  }: AdaptiveDailyQuestInput,
+): DailyQuest[] {
+  const baseQuests = getDailyQuests(dateStr);
+  const nextLesson =
+    orderedLessons.find((lesson) => !completedLessons.includes(lesson.id)) ?? null;
+  const nextChallenge =
+    orderedChallenges.find(
+      (challenge) => !completedChallenges.includes(challenge.id),
+    ) ?? null;
+  const uniqueCommands = new Set(
+    terminalHistory.map((command) => command.trim().split(/\s+/)[0]).filter(Boolean),
+  ).size;
+
+  return baseQuests.map((quest) => {
+    if (quest.type === "lesson" && nextLesson) {
+      return {
+        ...quest,
+        title:
+          quest.target > 1
+            ? `Push Through ${quest.target} Lessons`
+            : `Advance ${nextLesson.category}`,
+        description: `Best next lesson: ${nextLesson.title}`,
+      };
+    }
+
+    if (quest.type === "challenge" && nextChallenge) {
+      return {
+        ...quest,
+        title:
+          quest.target > 1
+            ? `Defeat ${quest.target} Raid Bosses`
+            : `Challenge Rank ${nextChallenge.difficulty}`,
+        description: `Recommended boss: ${nextChallenge.title}`,
+      };
+    }
+
+    if (quest.type === "terminal") {
+      const terminalTarget = uniqueCommands >= 10 ? quest.target : Math.max(quest.target - 5, 5);
+      return {
+        ...quest,
+        title: terminalTarget >= 20 ? "Heavy Training Session" : "Warm Up in Training",
+        description:
+          currentStreak >= 3
+            ? "Keep your command streak alive in the terminal."
+            : "Practice a few commands to build momentum.",
+        target: terminalTarget,
+      };
+    }
+
+    if (quest.type === "any") {
+      return {
+        ...quest,
+        description:
+          currentStreak > 0
+            ? `Current streak: ${currentStreak} day${currentStreak === 1 ? "" : "s"}`
+            : "Open the app and keep your hunter streak alive.",
+      };
+    }
+
+    return quest;
+  });
+}
+
 export const roadmapCategories: CategoryRoadmap[] = [
   { name: "Navigation", icon: "location", lessons: ["1", "11"], challenges: ["c1", "c2"], statType: "AGI" },
   { name: "Files", icon: "document", lessons: ["2", "3"], challenges: ["c3", "c4"], statType: "STR" },
@@ -72,6 +151,24 @@ export function getRoadmapProgress(completedLessons: string[], completedChalleng
   });
 
   return progress;
+}
+
+export function getRecommendedLessons(
+  completedLessons: string[],
+  count = 3,
+) {
+  return orderedLessons
+    .filter((lesson) => !completedLessons.includes(lesson.id))
+    .slice(0, count);
+}
+
+export function getRecommendedChallenges(
+  completedChallenges: string[],
+  count = 3,
+) {
+  return orderedChallenges
+    .filter((challenge) => !completedChallenges.includes(challenge.id))
+    .slice(0, count);
 }
 
 interface AchievementProgressInput {

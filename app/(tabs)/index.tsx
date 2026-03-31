@@ -16,7 +16,9 @@ import Colors from "@/constants/colors";
 import { useProgress } from "@/lib/progress-context";
 import {
   getAchievements,
-  getDailyQuests,
+  getAdaptiveDailyQuests,
+  getRecommendedChallenges,
+  getRecommendedLessons,
   getNextChallengeRecommendation,
   getNextLessonRecommendation,
 } from "@/lib/linux-data";
@@ -124,9 +126,16 @@ export default function HunterDashboard() {
   } = useProgress();
 
   const today = new Date().toDateString();
-  const quests = getDailyQuests(today);
+  const quests = getAdaptiveDailyQuests(today, {
+    completedLessons,
+    completedChallenges,
+    terminalHistory,
+    currentStreak,
+  });
   const nextLesson = getNextLessonRecommendation(completedLessons);
   const nextRaid = getNextChallengeRecommendation(completedChallenges);
+  const upcomingLessons = getRecommendedLessons(completedLessons, 2);
+  const upcomingRaids = getRecommendedChallenges(completedChallenges, 2);
   const achievements = getAchievements({
     completedLessons,
     completedChallenges,
@@ -163,6 +172,10 @@ export default function HunterDashboard() {
   const displayXp = xp;
   const displayRank = rank.rank;
   const displayName = "Hunter";
+  const focusLesson = upcomingLessons[0] ?? null;
+  const followupLesson = upcomingLessons[1] ?? null;
+  const focusRaid = upcomingRaids[0] ?? null;
+  const followupRaid = upcomingRaids[1] ?? null;
 
   if (!isLoaded) {
     return (
@@ -267,6 +280,9 @@ export default function HunterDashboard() {
                           <Text style={styles.recommendEyebrow}>Next Lesson · {nextLesson.category}</Text>
                           <Text style={styles.recommendTitle}>{nextLesson.title}</Text>
                           <Text style={styles.recommendDesc}>{nextLesson.description}</Text>
+                          <Text style={styles.recommendReason}>
+                            Best next move: builds your {nextLesson.statReward.type} path before harder fights.
+                          </Text>
                         </View>
                       </View>
                       <View style={styles.recommendFooter}>
@@ -290,6 +306,9 @@ export default function HunterDashboard() {
                           </Text>
                           <Text style={styles.recommendTitle}>{nextRaid.title}</Text>
                           <Text style={styles.recommendDesc}>{nextRaid.task}</Text>
+                          <Text style={styles.recommendReason}>
+                            Raid focus: a good boss check for your current rank and command depth.
+                          </Text>
                         </View>
                       </View>
                       <View style={styles.recommendFooter}>
@@ -299,6 +318,35 @@ export default function HunterDashboard() {
                       </View>
                     </LinearGradient>
                   </Pressable>
+                ) : null}
+              </View>
+
+              <View style={styles.pathPlanCard}>
+                <View style={styles.pathPlanHeader}>
+                  <Ionicons name="navigate" size={16} color={Colors.primary} />
+                  <Text style={styles.pathPlanTitle}>Path Focus</Text>
+                </View>
+                <Text style={styles.pathPlanText}>
+                  {focusLesson
+                    ? `Start with ${focusLesson.title} to keep your lesson path moving.`
+                    : "Your lesson path is clear right now."}{" "}
+                  {focusRaid
+                    ? `Then challenge ${focusRaid.title} when you want a boss check.`
+                    : "All current raids are cleared."}
+                </Text>
+                {(followupLesson || followupRaid) ? (
+                  <View style={styles.pathPlanNextRow}>
+                    {followupLesson ? (
+                      <View style={styles.pathPlanPill}>
+                        <Text style={styles.pathPlanPillText}>After that: {followupLesson.title}</Text>
+                      </View>
+                    ) : null}
+                    {followupRaid ? (
+                      <View style={styles.pathPlanPill}>
+                        <Text style={styles.pathPlanPillText}>Upcoming raid: {followupRaid.title}</Text>
+                      </View>
+                    ) : null}
+                  </View>
                 ) : null}
               </View>
             </>
@@ -498,6 +546,12 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: 6,
   },
+  recommendReason: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 8,
+  },
   recommendFooter: {
     flexDirection: "row",
     alignItems: "center",
@@ -513,6 +567,50 @@ const styles = StyleSheet.create({
     color: Colors.accent,
     fontSize: 13,
     fontWeight: "700",
+  },
+  pathPlanCard: {
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    marginTop: 10,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  pathPlanHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  pathPlanTitle: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  pathPlanText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 10,
+  },
+  pathPlanNextRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 12,
+  },
+  pathPlanPill: {
+    backgroundColor: Colors.background,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  pathPlanPillText: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    fontWeight: "600",
   },
 
   statsCard: {
