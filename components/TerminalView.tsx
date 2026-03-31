@@ -33,6 +33,7 @@ interface TerminalViewProps {
   initialDirectories?: Record<string, string[]>;
   initialFiles?: Record<string, string>;
   minHeight?: number;
+  themeId?: string;
 }
 
 interface ShellState {
@@ -194,6 +195,7 @@ export default function TerminalView({
   initialDirectories,
   initialFiles,
   minHeight = 120,
+  themeId = "default",
 }: TerminalViewProps) {
   const [lines, setLines] = useState<TerminalLine[]>(initialLines);
   const [input, setInput] = useState("");
@@ -205,6 +207,7 @@ export default function TerminalView({
 
   const homePath = initialCwd.startsWith("/home/") ? initialCwd.split("/").slice(0, 3).join("/") : "/home/user";
   const userName = getBaseName(homePath) || "user";
+  const terminalTheme = getTerminalTheme(themeId);
 
   useEffect(() => {
     setCwd(initialCwd);
@@ -547,33 +550,44 @@ export default function TerminalView({
   }
 
   return (
-    <Pressable style={[styles.container, { minHeight }]} onPress={() => inputRef.current?.focus()}>
+    <Pressable
+      style={[styles.container, { minHeight, backgroundColor: terminalTheme.background, borderColor: terminalTheme.border }]}
+      onPress={() => inputRef.current?.focus()}
+    >
       <ScrollView
         ref={scrollRef}
-        style={styles.scrollView}
+        style={[styles.scrollView, { backgroundColor: terminalTheme.background }]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
       >
-        {lines.length === 0 ? <Text style={[styles.line, styles.idlePrompt]}>{getPrompt()}</Text> : null}
+        {lines.length === 0 ? <Text style={[styles.line, { color: terminalTheme.prompt }]}>{getPrompt()}</Text> : null}
         {lines.map((line) =>
           line.type === "input" ? (
             <Text key={line.id} style={styles.line}>
-              <Text style={styles.promptText}>{getPrompt()} </Text>
-              <Text style={styles.inputLine}>{line.text.slice(getPrompt().length + 1)}</Text>
+              <Text style={[styles.promptText, { color: terminalTheme.prompt }]}>{getPrompt()} </Text>
+              <Text style={[styles.inputLine, { color: terminalTheme.input }]}>{line.text.slice(getPrompt().length + 1)}</Text>
             </Text>
           ) : (
-            <Text key={line.id} style={[styles.line, line.type === "error" && styles.errorLine, line.type === "success" && styles.successLine]}>
+            <Text
+              key={line.id}
+              style={[
+                styles.line,
+                { color: terminalTheme.output },
+                line.type === "error" && { color: terminalTheme.error },
+                line.type === "success" && { color: terminalTheme.success },
+              ]}
+            >
               {line.text}
             </Text>
           ),
         )}
       </ScrollView>
-      <View style={styles.inputRow}>
-        <Text style={styles.prompt}>{getPrompt()} </Text>
+      <View style={[styles.inputRow, { borderTopColor: terminalTheme.border, backgroundColor: terminalTheme.inputBg }]}>
+        <Text style={[styles.prompt, { color: terminalTheme.prompt }]}>{getPrompt()} </Text>
         <TextInput
           ref={inputRef}
-          style={styles.input}
+          style={[styles.input, { color: terminalTheme.input }]}
           value={input}
           onChangeText={setInput}
           onSubmitEditing={handleSubmit}
@@ -581,15 +595,68 @@ export default function TerminalView({
           autoCorrect={false}
           autoFocus={autoFocus}
           editable={!disabled}
-          placeholderTextColor={Colors.textMuted}
+          placeholderTextColor={terminalTheme.placeholder}
           placeholder="type a command..."
           returnKeyType="send"
           blurOnSubmit={false}
-          selectionColor={Colors.terminalGreen}
+          selectionColor={terminalTheme.input}
         />
       </View>
     </Pressable>
   );
+}
+
+function getTerminalTheme(themeId: string) {
+  switch (themeId) {
+    case "shadowcore":
+      return {
+        background: "#090811",
+        inputBg: "#110F1B",
+        border: "#352759",
+        prompt: "#64D2FF",
+        input: "#B794F4",
+        output: Colors.text,
+        error: Colors.error,
+        success: "#FFB800",
+        placeholder: "#5E5578",
+      };
+    case "frostbyte":
+      return {
+        background: "#07131A",
+        inputBg: "#0B1C24",
+        border: "#1E5362",
+        prompt: "#8BE9FD",
+        input: "#64D2FF",
+        output: "#DDF7FF",
+        error: "#FF7A8A",
+        success: "#9EF98D",
+        placeholder: "#5D8592",
+      };
+    case "emberline":
+      return {
+        background: "#140B09",
+        inputBg: "#1E110E",
+        border: "#5B2F24",
+        prompt: "#FFB800",
+        input: "#FF8A5B",
+        output: "#FFE9DE",
+        error: "#FF6B7D",
+        success: "#FFD36B",
+        placeholder: "#8C6358",
+      };
+    default:
+      return {
+        background: "#0A0E14",
+        inputBg: "#080C12",
+        border: Colors.border,
+        prompt: Colors.accent,
+        input: Colors.terminalGreen,
+        output: Colors.text,
+        error: Colors.error,
+        success: Colors.warning,
+        placeholder: Colors.textMuted,
+      };
+  }
 }
 
 const styles = StyleSheet.create({
@@ -614,15 +681,6 @@ const styles = StyleSheet.create({
   },
   inputLine: {
     color: Colors.terminalGreen,
-  },
-  idlePrompt: {
-    color: Colors.accent,
-  },
-  errorLine: {
-    color: Colors.error,
-  },
-  successLine: {
-    color: Colors.warning,
   },
   inputRow: {
     flexDirection: "row",

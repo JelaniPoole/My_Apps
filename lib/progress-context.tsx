@@ -1,7 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiUrl } from "@/lib/api";
-import { getDailyQuests, getRank, getNextRank } from "@/lib/linux-data";
+import {
+  defaultOwnedFrames,
+  defaultOwnedThemes,
+  defaultOwnedTitles,
+  getDailyQuests,
+  getNextRank,
+  getRank,
+} from "@/lib/linux-data";
 
 export interface Stats {
   [key: string]: number;
@@ -21,7 +28,13 @@ interface DailyProgress {
 
 interface ProgressData {
   xp: number;
+  essenceShards: number;
   stats: Stats;
+  ownedTitles: string[];
+  ownedFrames: string[];
+  ownedThemes: string[];
+  activeFrame: string;
+  activeTheme: string;
   completedLessons: string[];
   completedChallenges: string[];
   currentStreak: number;
@@ -34,7 +47,13 @@ interface ProgressData {
 
 interface ProgressContextValue {
   xp: number;
+  essenceShards: number;
   stats: Stats;
+  ownedTitles: string[];
+  ownedFrames: string[];
+  ownedThemes: string[];
+  activeFrame: string;
+  activeTheme: string;
   totalPower: number;
   completedLessons: string[];
   completedChallenges: string[];
@@ -48,12 +67,22 @@ interface ProgressContextValue {
   rank: ReturnType<typeof getRank>;
   nextRank: ReturnType<typeof getNextRank>;
   title: string;
+  pendingRankUp: { from: ReturnType<typeof getRank>; to: ReturnType<typeof getRank> } | null;
   addXp: (amount: number) => void;
+  addShards: (amount: number) => void;
+  spendShards: (amount: number) => boolean;
   addStat: (type: keyof Stats, amount: number) => void;
   completeLesson: (lessonId: string) => void;
   completeChallenge: (challengeId: string) => void;
   addTerminalCommand: (cmd: string) => void;
   claimDailyQuest: (questId: string) => void;
+  unlockTitle: (title: string, cost: number) => boolean;
+  unlockFrame: (frameId: string, cost: number) => boolean;
+  unlockTheme: (themeId: string, cost: number) => boolean;
+  equipTitle: (title: string) => void;
+  equipFrame: (frameId: string) => void;
+  equipTheme: (themeId: string) => void;
+  dismissRankUp: () => void;
   isLoaded: boolean;
 }
 
@@ -61,7 +90,13 @@ const STORAGE_KEY = "@terminal_quest_progress_v2";
 
 const defaultProgress: ProgressData = {
   xp: 0,
+  essenceShards: 0,
   stats: { STR: 1, INT: 1, AGI: 1, VIT: 1, DEF: 1 },
+  ownedTitles: defaultOwnedTitles,
+  ownedFrames: defaultOwnedFrames,
+  ownedThemes: defaultOwnedThemes,
+  activeFrame: "default",
+  activeTheme: "default",
   completedLessons: [],
   completedChallenges: [],
   currentStreak: 0,
@@ -130,6 +165,10 @@ const ProgressContext = createContext<ProgressContextValue | null>(null);
 export function ProgressProvider({ children }: { children: ReactNode }) {
   const [progress, setProgress] = useState<ProgressData>(defaultProgress);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [pendingRankUp, setPendingRankUp] = useState<{
+    from: ReturnType<typeof getRank>;
+    to: ReturnType<typeof getRank>;
+  } | null>(null);
 
   useEffect(() => {
     loadProgress();
@@ -139,12 +178,33 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored) as ProgressData;
+        const parsed = JSON.parse(stored) as Partial<ProgressData>;
+        const mergedStored: ProgressData = {
+          ...defaultProgress,
+          ...parsed,
+          stats: {
+            ...defaultProgress.stats,
+            ...(parsed.stats ?? {}),
+          },
+          ownedTitles: parsed.ownedTitles ?? defaultProgress.ownedTitles,
+          ownedFrames: parsed.ownedFrames ?? defaultProgress.ownedFrames,
+          ownedThemes: parsed.ownedThemes ?? defaultProgress.ownedThemes,
+          activeFrame: parsed.activeFrame ?? defaultProgress.activeFrame,
+          activeTheme: parsed.activeTheme ?? defaultProgress.activeTheme,
+          dailyProgress: {
+            ...defaultProgress.dailyProgress,
+            ...(parsed.dailyProgress ?? {}),
+          },
+          completedLessons: parsed.completedLessons ?? defaultProgress.completedLessons,
+          completedChallenges: parsed.completedChallenges ?? defaultProgress.completedChallenges,
+          terminalHistory: parsed.terminalHistory ?? defaultProgress.terminalHistory,
+          essenceShards: parsed.essenceShards ?? defaultProgress.essenceShards,
+        };
         const today = new Date().toDateString();
-        const lastActive = parsed.lastActiveDate;
+        const lastActive = mergedStored.lastActiveDate;
 
-        let streak = parsed.currentStreak;
-        let dailyProgress = parsed.dailyProgress;
+        let streak = mergedStored.currentStreak;
+        let dailyProgress = mergedStored.dailyProgress;
 
         if (lastActive && lastActive !== today) {
           const lastDate = new Date(lastActive);
@@ -153,7 +213,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
           dailyProgress = { lessonsToday: 0, challengesToday: 0, commandsToday: 0, questsClaimed: [] };
         }
 
-        setProgress({ ...parsed, currentStreak: streak, dailyProgress });
+        setProgress({ ...mergedStored, currentStreak: streak, dailyProgress });
       }
     } catch (e) {
       console.error("Failed to load progress", e);
@@ -166,6 +226,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
         const merged: ProgressData = {
           ...prev,
           xp: Math.max(prev.xp, server.xp ?? 0),
+          essenceShards: Math.max(prev.essenceShards, server.essenceShards ?? 0),
           stats: {
             STR: Math.max(prev.stats.STR, server.stats?.STR ?? 0),
             INT: Math.max(prev.stats.INT, server.stats?.INT ?? 0),
@@ -173,6 +234,11 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
             VIT: Math.max(prev.stats.VIT, server.stats?.VIT ?? 0),
             DEF: Math.max(prev.stats.DEF, server.stats?.DEF ?? 0),
           },
+          ownedTitles: Array.from(new Set([...(prev.ownedTitles ?? []), ...(server.ownedTitles ?? [])])),
+          ownedFrames: Array.from(new Set([...(prev.ownedFrames ?? []), ...(server.ownedFrames ?? [])])),
+          ownedThemes: Array.from(new Set([...(prev.ownedThemes ?? []), ...(server.ownedThemes ?? [])])),
+          activeFrame: server.activeFrame ?? prev.activeFrame,
+          activeTheme: server.activeTheme ?? prev.activeTheme,
           completedLessons: Array.from(new Set([...prev.completedLessons, ...(server.completedLessons ?? [])])),
           completedChallenges: Array.from(new Set([...prev.completedChallenges, ...(server.completedChallenges ?? [])])),
           currentStreak: Math.max(prev.currentStreak, server.currentStreak ?? 0),
@@ -208,6 +274,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
   function updateProgress(updater: (prev: ProgressData) => ProgressData) {
     setProgress((prev) => {
       const today = new Date().toDateString();
+      const previousRank = getRank(calculateLevel(prev.xp));
       const updated = updater(prev);
 
       let streak = updated.currentStreak;
@@ -222,6 +289,10 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       }
 
       const final = { ...updated, currentStreak: streak, lastActiveDate: today };
+      const nextRank = getRank(calculateLevel(final.xp));
+      if (nextRank.rank !== previousRank.rank) {
+        setPendingRankUp({ from: previousRank, to: nextRank });
+      }
       saveProgress(final);
       void syncProgressToServer(final);
       return final;
@@ -230,6 +301,20 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
 
   function addXp(amount: number) {
     updateProgress((prev) => ({ ...prev, xp: prev.xp + amount }));
+  }
+
+  function addShards(amount: number) {
+    updateProgress((prev) => ({ ...prev, essenceShards: prev.essenceShards + amount }));
+  }
+
+  function spendShards(amount: number) {
+    let success = false;
+    updateProgress((prev) => {
+      if (prev.essenceShards < amount) return prev;
+      success = true;
+      return { ...prev, essenceShards: prev.essenceShards - amount };
+    });
+    return success;
   }
 
   function addStat(type: keyof Stats, amount: number) {
@@ -257,6 +342,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       return {
         ...prev,
         completedChallenges: [...prev.completedChallenges, challengeId],
+        essenceShards: prev.essenceShards + 15,
         dailyProgress: { ...prev.dailyProgress, challengesToday: prev.dailyProgress.challengesToday + 1 },
       };
     });
@@ -280,9 +366,77 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       if (prev.dailyProgress.questsClaimed.includes(questId)) return prev;
       return {
         ...prev,
+        essenceShards: prev.essenceShards + 5,
         dailyProgress: { ...prev.dailyProgress, questsClaimed: [...prev.dailyProgress.questsClaimed, questId] },
       };
     });
+  }
+
+  function dismissRankUp() {
+    setPendingRankUp(null);
+  }
+
+  function unlockTitle(titleToUnlock: string, cost: number) {
+    let success = false;
+    updateProgress((prev) => {
+      if (prev.ownedTitles.includes(titleToUnlock) || prev.essenceShards < cost) return prev;
+      success = true;
+      return {
+        ...prev,
+        essenceShards: prev.essenceShards - cost,
+        ownedTitles: [...prev.ownedTitles, titleToUnlock],
+        title: titleToUnlock,
+      };
+    });
+    return success;
+  }
+
+  function unlockFrame(frameId: string, cost: number) {
+    let success = false;
+    updateProgress((prev) => {
+      if (prev.ownedFrames.includes(frameId) || prev.essenceShards < cost) return prev;
+      success = true;
+      return {
+        ...prev,
+        essenceShards: prev.essenceShards - cost,
+        ownedFrames: [...prev.ownedFrames, frameId],
+        activeFrame: frameId,
+      };
+    });
+    return success;
+  }
+
+  function unlockTheme(themeId: string, cost: number) {
+    let success = false;
+    updateProgress((prev) => {
+      if (prev.ownedThemes.includes(themeId) || prev.essenceShards < cost) return prev;
+      success = true;
+      return {
+        ...prev,
+        essenceShards: prev.essenceShards - cost,
+        ownedThemes: [...prev.ownedThemes, themeId],
+        activeTheme: themeId,
+      };
+    });
+    return success;
+  }
+
+  function equipTitle(nextTitle: string) {
+    updateProgress((prev) =>
+      prev.ownedTitles.includes(nextTitle) ? { ...prev, title: nextTitle } : prev,
+    );
+  }
+
+  function equipFrame(frameId: string) {
+    updateProgress((prev) =>
+      prev.ownedFrames.includes(frameId) ? { ...prev, activeFrame: frameId } : prev,
+    );
+  }
+
+  function equipTheme(themeId: string) {
+    updateProgress((prev) =>
+      prev.ownedThemes.includes(themeId) ? { ...prev, activeTheme: themeId } : prev,
+    );
   }
 
   const level = calculateLevel(progress.xp);
@@ -297,7 +451,13 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       xp: progress.xp,
+      essenceShards: progress.essenceShards,
       stats: progress.stats,
+      ownedTitles: progress.ownedTitles,
+      ownedFrames: progress.ownedFrames,
+      ownedThemes: progress.ownedThemes,
+      activeFrame: progress.activeFrame,
+      activeTheme: progress.activeTheme,
       totalPower,
       completedLessons: progress.completedLessons,
       completedChallenges: progress.completedChallenges,
@@ -311,15 +471,25 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       rank,
       nextRank: nextR,
       title: progress.title,
+      pendingRankUp,
       addXp,
+      addShards,
+      spendShards,
       addStat,
       completeLesson,
       completeChallenge,
       addTerminalCommand,
       claimDailyQuest,
+      unlockTitle,
+      unlockFrame,
+      unlockTheme,
+      equipTitle,
+      equipFrame,
+      equipTheme,
+      dismissRankUp,
       isLoaded,
     }),
-    [progress, isLoaded]
+    [progress, isLoaded, pendingRankUp]
   );
 
   return <ProgressContext.Provider value={value}>{children}</ProgressContext.Provider>;

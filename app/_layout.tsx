@@ -16,6 +16,7 @@ function RootLayoutNav() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="lesson/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="achievements" options={{ headerShown: false }} />
+      <Stack.Screen name="shop" options={{ headerShown: false }} />
     </Stack>
   );
 }

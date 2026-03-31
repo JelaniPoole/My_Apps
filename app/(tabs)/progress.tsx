@@ -46,7 +46,7 @@ export default function StatsScreen() {
   const insets = useSafeAreaInsets();
   const {
     stats, level, rank, completedLessons, completedChallenges,
-    currentStreak, terminalHistory, totalPower,
+    currentStreak, terminalHistory, totalPower, essenceShards, title,
   } = useProgress();
   const webTop = Platform.OS === "web" ? 67 : 0;
   const grouped = getCommandsByCategory();
@@ -77,8 +77,8 @@ export default function StatsScreen() {
                 <Text style={[styles.profileRankText, { color: rank.color }]}>{rank.rank}</Text>
               </View>
               <View style={styles.profileInfo}>
-                <Text style={styles.profileTitle}>{rank.title}</Text>
-                <Text style={styles.profileLevel}>Level {level}</Text>
+                <Text style={styles.profileTitle}>{title}</Text>
+                <Text style={styles.profileLevel}>{rank.title} · Level {level}</Text>
               </View>
               <View style={styles.profilePower}>
                 <Text style={styles.powerValue}>{totalPower}</Text>
@@ -138,6 +138,24 @@ export default function StatsScreen() {
                 <Text style={styles.achievementLinkTitle}>Open Achievement Journal</Text>
                 <Text style={styles.achievementLinkText}>
                   View all {achievements.length} achievements, unlocked badges, and in-progress milestones.
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          </Pressable>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(500).delay(60)}>
+          <Text style={styles.sectionTitle}>Essence Shop</Text>
+          <Pressable style={({ pressed }) => [styles.shopCard, pressed && styles.pressed]} onPress={() => router.push("/shop")}>
+            <View style={styles.shopLeft}>
+              <View style={styles.shopIcon}>
+                <Ionicons name="diamond" size={18} color={Colors.xpGold} />
+              </View>
+              <View style={styles.shopCopy}>
+                <Text style={styles.shopTitle}>Open Reward Shop</Text>
+                <Text style={styles.shopText}>
+                  Spend {essenceShards} shard{essenceShards === 1 ? "" : "s"} on titles, frames, and terminal themes.
                 </Text>
               </View>
             </View>
@@ -206,6 +224,34 @@ const styles = StyleSheet.create({
   profilePower: { alignItems: "center" },
   powerValue: { color: Colors.accent, fontSize: 24, fontWeight: "800" },
   powerLabel: { color: Colors.textMuted, fontSize: 11 },
+  shopCard: {
+    marginHorizontal: 16,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  shopLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  shopIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.xpGold + "18",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  shopCopy: { flex: 1 },
+  shopTitle: { color: Colors.text, fontSize: 15, fontWeight: "700" },
+  shopText: { color: Colors.textSecondary, fontSize: 13, lineHeight: 18, marginTop: 4 },
 
   sectionTitle: { color: Colors.text, fontSize: 16, fontWeight: "700", marginHorizontal: 20, marginTop: 20, marginBottom: 10 },
   sectionSubtitle: { color: Colors.textSecondary, fontSize: 13, marginHorizontal: 20, marginBottom: 12, marginTop: -4 },

@@ -81,7 +81,7 @@ function DungeonCard({
 
 export default function Dungeons() {
   const insets = useSafeAreaInsets();
-  const { completedLessons, completeLesson, addXp, addStat } = useProgress();
+  const { completedLessons, completeLesson, addXp, addStat, activeTheme } = useProgress();
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [showComplete, setShowComplete] = useState(false);
@@ -236,6 +236,7 @@ export default function Dungeons() {
                 initialDirectories={activeLesson.terminalSeed?.directories}
                 initialFiles={activeLesson.terminalSeed?.files}
                 minHeight={280}
+                themeId={activeTheme}
               />
             </View>
           </View>

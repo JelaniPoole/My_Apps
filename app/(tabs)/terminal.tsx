@@ -8,7 +8,7 @@ import TerminalView from "@/components/TerminalView";
 
 export default function TrainingGround() {
   const insets = useSafeAreaInsets();
-  const { addTerminalCommand } = useProgress();
+  const { addTerminalCommand, activeTheme } = useProgress();
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const webTop = Platform.OS === "web" ? 67 : 0;
   const estimatedTabBarHeight = Platform.OS === "web" ? 0 : insets.bottom + 64;
@@ -52,6 +52,7 @@ export default function TrainingGround() {
           welcomeMessage={"hunter@system:~$ Welcome, Hunter.\nType 'help' for available commands.\n"}
           prompt="hunter@system:~$"
           minHeight={320}
+          themeId={activeTheme}
           onCommand={(cmd) => {
             addTerminalCommand(cmd);
           }}

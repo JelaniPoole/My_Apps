@@ -171,6 +171,106 @@ export function getRecommendedChallenges(
     .slice(0, count);
 }
 
+interface SystemMessage {
+  id: string;
+  title: string;
+  body: string;
+  icon: string;
+  tone: "primary" | "warning" | "success";
+}
+
+interface SystemMessageInput {
+  level: number;
+  currentStreak: number;
+  essenceShards: number;
+  completedLessons: string[];
+  completedChallenges: string[];
+  terminalHistory: string[];
+}
+
+export function getSystemMessages({
+  level,
+  currentStreak,
+  essenceShards,
+  completedLessons,
+  completedChallenges,
+  terminalHistory,
+}: SystemMessageInput): SystemMessage[] {
+  const nextLesson =
+    orderedLessons.find((lesson) => !completedLessons.includes(lesson.id)) ?? null;
+  const nextChallenge =
+    orderedChallenges.find(
+      (challenge) => !completedChallenges.includes(challenge.id),
+    ) ?? null;
+  const uniqueCommands = new Set(
+    terminalHistory.map((command) => command.trim().split(/\s+/)[0]).filter(Boolean),
+  ).size;
+
+  const messages: SystemMessage[] = [];
+
+  if (nextLesson) {
+    messages.push({
+      id: "lesson_focus",
+      title: "System Quest Updated",
+      body: `Your next dungeon is ${nextLesson.title}. Clearing it strengthens ${nextLesson.statReward.type} and advances the ${nextLesson.category} track.`,
+      icon: "compass",
+      tone: "primary",
+    });
+  }
+
+  if (nextChallenge && completedLessons.length >= 2) {
+    messages.push({
+      id: "raid_focus",
+      title: "Emergency Raid Available",
+      body: `${nextChallenge.title} is the next boss check. Rank ${nextChallenge.difficulty} clearance will award bonus hunter growth.`,
+      icon: "flash",
+      tone: "warning",
+    });
+  }
+
+  if (currentStreak >= 2) {
+    messages.push({
+      id: "streak",
+      title: "Streak Resonance Detected",
+      body: `You are on a ${currentStreak}-day streak. Maintain momentum to keep accelerating your hunter growth.`,
+      icon: "flame",
+      tone: "success",
+    });
+  }
+
+  if (essenceShards > 0) {
+    messages.push({
+      id: "shards",
+      title: "Essence Accumulation",
+      body: `You have collected ${essenceShards} essence shards from raids and missions. Future cosmetic unlocks can spend this currency.`,
+      icon: "diamond",
+      tone: "warning",
+    });
+  }
+
+  if (uniqueCommands >= 8) {
+    messages.push({
+      id: "command_mastery",
+      title: "Terminal Mastery Rising",
+      body: `You have already used ${uniqueCommands} unique commands. The System recognizes broadening command fluency.`,
+      icon: "terminal",
+      tone: "primary",
+    });
+  }
+
+  if (messages.length === 0) {
+    messages.push({
+      id: "starter",
+      title: "System Initialization Complete",
+      body: `Level ${level} hunter detected. Clear your first lesson and raid to awaken deeper progression systems.`,
+      icon: "sparkles",
+      tone: "primary",
+    });
+  }
+
+  return messages.slice(0, 3);
+}
+
 interface AchievementProgressInput {
   completedLessons: string[];
   completedChallenges: string[];

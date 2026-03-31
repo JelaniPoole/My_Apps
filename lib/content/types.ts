@@ -82,3 +82,15 @@ export interface Achievement {
   progress: number;
   unlocked: boolean;
 }
+
+export interface ShopItem {
+  id: string;
+  title: string;
+  description: string;
+  cost: number;
+  icon: string;
+  color: string;
+  category: "title" | "frame" | "theme";
+  unlockValue: string;
+  preview?: string;
+}

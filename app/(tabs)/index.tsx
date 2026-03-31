@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -6,11 +6,20 @@ import {
   ScrollView,
   Pressable,
   Platform,
+  Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, {
+  Easing,
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import { router } from "expo-router";
 import Colors from "@/constants/colors";
 import { useProgress } from "@/lib/progress-context";
@@ -19,8 +28,10 @@ import {
   getAdaptiveDailyQuests,
   getRecommendedChallenges,
   getRecommendedLessons,
+  getSystemMessages,
   getNextChallengeRecommendation,
   getNextLessonRecommendation,
+  RANKS,
 } from "@/lib/linux-data";
 
 const STAT_META: Record<string, { label: string; icon: string; color: string }> = {
@@ -30,6 +41,273 @@ const STAT_META: Record<string, { label: string; icon: string; color: string }> 
   VIT: { label: "VIT", icon: "heart", color: Colors.statVIT || "#FF2D55" },
   DEF: { label: "DEF", icon: "shield", color: Colors.statDEF || "#808080" },
 };
+
+function getRankCeremony(rankLetter?: string) {
+  switch (rankLetter) {
+    case "D":
+      return {
+        colors: [Colors.rankD + "45", Colors.surface] as const,
+        glow: Colors.rankD,
+        icon: "water",
+        iconColor: Colors.rankD,
+        systemLine: "The System senses your awakening.",
+        body: "You have stepped beyond novice territory. Faster growth and stronger hunts now answer your call.",
+        shadowOpacity: 0.16,
+        scanOpacity: 0.26,
+        mode: "awaken" as const,
+      };
+    case "C":
+      return {
+        colors: [Colors.rankC + "45", Colors.surface] as const,
+        glow: Colors.rankC,
+        icon: "flash",
+        iconColor: Colors.rankC,
+        systemLine: "A higher gate has opened.",
+        body: "Your presence now carries real pressure. Raids ahead will expect cleaner execution and sharper instincts.",
+        shadowOpacity: 0.2,
+        scanOpacity: 0.3,
+        mode: "surge" as const,
+      };
+    case "B":
+      return {
+        colors: [Colors.rankB + "45", Colors.surface] as const,
+        glow: Colors.rankB,
+        icon: "flame",
+        iconColor: Colors.rankB,
+        systemLine: "Your hunter aura intensifies.",
+        body: "This promotion marks a dangerous leap. The System is beginning to treat you like a real threat.",
+        shadowOpacity: 0.24,
+        scanOpacity: 0.34,
+        mode: "flare" as const,
+      };
+    case "A":
+      return {
+        colors: [Colors.rankA + "45", Colors.surface] as const,
+        glow: Colors.rankA,
+        icon: "planet",
+        iconColor: Colors.rankA,
+        systemLine: "Emergency authority granted.",
+        body: "Only elite hunters reach this level. Your victories now reshape the battlefield itself.",
+        shadowOpacity: 0.28,
+        scanOpacity: 0.38,
+        mode: "monarch" as const,
+      };
+    case "S":
+      return {
+        colors: ["#FF2D55AA", Colors.surface] as const,
+        glow: "#FF2D55",
+        icon: "diamond",
+        iconColor: "#FF2D55",
+        systemLine: "The System acknowledges a monster.",
+        body: "This is no ordinary promotion. You have entered the realm of overwhelming force and rare command mastery.",
+        shadowOpacity: 0.34,
+        scanOpacity: 0.42,
+        mode: "eclipse" as const,
+      };
+    default:
+      return {
+        colors: [Colors.xpGold + "40", Colors.surface] as const,
+        glow: Colors.xpGold,
+        icon: "sparkles",
+        iconColor: Colors.xpGold,
+        systemLine: "The System has recognized your growth.",
+        body: "Emergency-grade content and stronger rewards now feel closer than ever.",
+        shadowOpacity: 0.14,
+        scanOpacity: 0.24,
+        mode: "system" as const,
+      };
+  }
+}
+
+function getFrameColor(frameId: string, fallback: string) {
+  switch (frameId) {
+    case "neon":
+      return "#64D2FF";
+    case "ember":
+      return "#FF8A5B";
+    default:
+      return fallback;
+  }
+}
+
+function PromotionAura({
+  color,
+  shadowOpacity,
+  scanOpacity,
+  mode,
+}: {
+  color: string;
+  shadowOpacity: number;
+  scanOpacity: number;
+  mode: "system" | "awaken" | "surge" | "flare" | "monarch" | "eclipse";
+}) {
+  const pulse = useSharedValue(0.92);
+  const ringOpacity = useSharedValue(0.18);
+  const scanProgress = useSharedValue(0);
+
+  React.useEffect(() => {
+    pulse.value = withRepeat(
+      withSequence(
+        withTiming(1.06, { duration: 1800, easing: Easing.out(Easing.quad) }),
+        withTiming(0.94, { duration: 1800, easing: Easing.inOut(Easing.quad) }),
+      ),
+      -1,
+      false,
+    );
+
+    ringOpacity.value = withRepeat(
+      withSequence(
+        withTiming(0.34, { duration: 1600, easing: Easing.out(Easing.quad) }),
+        withTiming(0.12, { duration: 1600, easing: Easing.inOut(Easing.quad) }),
+      ),
+      -1,
+      false,
+    );
+
+    scanProgress.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 2200, easing: Easing.inOut(Easing.quad) }),
+        withTiming(0, { duration: 0 }),
+      ),
+      -1,
+      false,
+    );
+  }, [pulse, ringOpacity, scanProgress]);
+
+  const shadowStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value }],
+    opacity: ringOpacity.value * shadowOpacity * 3.2,
+  }));
+
+  const ringStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value + 0.08 }],
+    opacity: ringOpacity.value,
+  }));
+
+  const ringSecondaryStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value + 0.18 }],
+    opacity: ringOpacity.value * 0.7,
+  }));
+
+  const scanStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -140 + scanProgress.value * 280 }],
+    opacity: scanOpacity,
+  }));
+
+  const inverseScanStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: 120 - scanProgress.value * 240 }],
+    opacity: scanOpacity * 0.75,
+  }));
+
+  const flareLeftStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: -24 - pulse.value * 10 }, { scaleX: pulse.value }],
+    opacity: ringOpacity.value * 0.9,
+  }));
+
+  const flareRightStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: 24 + pulse.value * 10 }, { scaleX: pulse.value }],
+    opacity: ringOpacity.value * 0.9,
+  }));
+
+  const pillarStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleY: pulse.value + 0.06 }],
+    opacity: ringOpacity.value * 0.95,
+  }));
+
+  const coreStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value * 0.88 }],
+    opacity: ringOpacity.value * 1.1,
+  }));
+
+  return (
+    <View pointerEvents="none" style={styles.promotionAuraWrap}>
+      <Animated.View
+        style={[
+          styles.promotionShadow,
+          { backgroundColor: color },
+          shadowStyle,
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.promotionRing,
+          { borderColor: color },
+          ringStyle,
+        ]}
+      />
+      {(mode === "surge" || mode === "monarch" || mode === "eclipse") ? (
+        <Animated.View
+          style={[
+            styles.promotionRingSecondary,
+            { borderColor: color },
+            ringSecondaryStyle,
+          ]}
+        />
+      ) : null}
+      {(mode === "flare" || mode === "eclipse") ? (
+        <>
+          <Animated.View
+            style={[
+              styles.promotionFlareLeft,
+              { backgroundColor: color },
+              flareLeftStyle,
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.promotionFlareRight,
+              { backgroundColor: color },
+              flareRightStyle,
+            ]}
+          />
+        </>
+      ) : null}
+      {(mode === "monarch" || mode === "eclipse") ? (
+        <>
+          <Animated.View
+            style={[
+              styles.promotionPillarLeft,
+              { backgroundColor: color },
+              pillarStyle,
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.promotionPillarRight,
+              { backgroundColor: color },
+              pillarStyle,
+            ]}
+          />
+        </>
+      ) : null}
+      {mode === "eclipse" ? (
+        <Animated.View
+          style={[
+            styles.promotionCore,
+            { backgroundColor: color },
+            coreStyle,
+          ]}
+        />
+      ) : null}
+      <Animated.View
+        style={[
+          styles.promotionScanLine,
+          { backgroundColor: color },
+          scanStyle,
+        ]}
+      />
+      {(mode === "surge" || mode === "eclipse") ? (
+        <Animated.View
+          style={[
+            styles.promotionScanLineSecondary,
+            { backgroundColor: color },
+            inverseScanStyle,
+          ]}
+        />
+      ) : null}
+    </View>
+  );
+}
 
 function StatBar({ type, value }: { type: string; value: number }) {
   const meta = STAT_META[type];
@@ -107,13 +385,19 @@ function DailyQuestCard({
 
 export default function HunterDashboard() {
   const insets = useSafeAreaInsets();
+  const [previewRankIndex, setPreviewRankIndex] = useState<number | null>(null);
   const {
     xp,
     stats,
     level,
     xpProgress,
+    xpForNextLevel,
+    xpIntoCurrentLevel,
     rank,
     nextRank,
+    essenceShards,
+    activeFrame,
+    title,
     currentStreak,
     totalPower,
     completedLessons,
@@ -122,6 +406,8 @@ export default function HunterDashboard() {
     dailyProgress,
     addXp,
     claimDailyQuest,
+    pendingRankUp,
+    dismissRankUp,
     isLoaded,
   } = useProgress();
 
@@ -144,6 +430,20 @@ export default function HunterDashboard() {
   });
   const unlockedAchievements = achievements.filter((achievement) => achievement.unlocked);
   const nextAchievement = achievements.find((achievement) => !achievement.unlocked) ?? null;
+  const previewRankUp = useMemo(() => {
+    if (previewRankIndex === null) return null;
+    const to = RANKS[previewRankIndex];
+    const from = RANKS[Math.max(previewRankIndex - 1, 0)];
+    return { from, to };
+  }, [previewRankIndex]);
+  const systemMessages = getSystemMessages({
+    level,
+    currentStreak,
+    essenceShards,
+    completedLessons,
+    completedChallenges,
+    terminalHistory,
+  });
 
   function getQuestProgress(quest: { type: string }) {
     switch (quest.type) {
@@ -171,11 +471,17 @@ export default function HunterDashboard() {
   const displayLevel = level;
   const displayXp = xp;
   const displayRank = rank.rank;
-  const displayName = "Hunter";
+  const displayName = title;
+  const displayedShards = essenceShards ?? 0;
   const focusLesson = upcomingLessons[0] ?? null;
   const followupLesson = upcomingLessons[1] ?? null;
   const focusRaid = upcomingRaids[0] ?? null;
   const followupRaid = upcomingRaids[1] ?? null;
+  const xpToNextPromotion = nextRank
+    ? Math.max(0, xpForNextLevel - xpIntoCurrentLevel)
+    : 0;
+  const activePromotion = previewRankUp ?? pendingRankUp;
+  const rankCeremony = getRankCeremony(activePromotion?.to.rank);
 
   if (!isLoaded) {
     return (
@@ -198,13 +504,23 @@ export default function HunterDashboard() {
             colors={[Colors.primary + "30", Colors.background]}
             style={styles.headerGradient}
           >
-            <View style={styles.rankBadge}>
-              <Text style={[styles.rankLetter, { color: rank.color }]}>{displayRank}</Text>
+            <View
+              style={[
+                styles.rankBadge,
+                {
+                  borderColor: getFrameColor(activeFrame, Colors.primary + "80"),
+                  shadowColor: getFrameColor(activeFrame, rank.color),
+                  shadowOpacity: 0.18,
+                  shadowRadius: 12,
+                },
+              ]}
+            >
+              <Text style={[styles.rankLetter, { color: getFrameColor(activeFrame, rank.color) }]}>{displayRank}</Text>
             </View>
 
             <View style={styles.headerInfo}>
               <Text style={styles.rankTitle}>{displayName}</Text>
-              <Text style={styles.levelText}>LV. {displayLevel}</Text>
+              <Text style={styles.levelText}>{rank.title} · LV. {displayLevel}</Text>
 
               <View style={styles.xpBarContainer}>
                 <View style={styles.xpBarBg}>
@@ -247,9 +563,59 @@ export default function HunterDashboard() {
             <Text style={styles.quickStatValue}>{displayXp}</Text>
             <Text style={styles.quickStatLabel}>XP</Text>
           </View>
+          <View style={styles.quickStatDivider} />
+          <View style={styles.quickStatItem}>
+            <Ionicons name="diamond" size={20} color={Colors.xpGold} />
+            <Text style={styles.quickStatValue}>{displayedShards}</Text>
+            <Text style={styles.quickStatLabel}>Shards</Text>
+          </View>
         </Animated.View>
 
         <Animated.View entering={FadeInDown.duration(600).delay(200)}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="sparkles" size={18} color={Colors.xpGold} />
+            <Text style={styles.sectionTitle}>The System</Text>
+          </View>
+          <View style={styles.systemCard}>
+            {systemMessages.map((message) => (
+              <View key={message.id} style={styles.systemMessageRow}>
+                <View
+                  style={[
+                    styles.systemIcon,
+                    message.tone === "warning"
+                      ? styles.systemIconWarning
+                      : message.tone === "success"
+                      ? styles.systemIconSuccess
+                      : styles.systemIconPrimary,
+                  ]}
+                >
+                  <Ionicons
+                    name={message.icon as any}
+                    size={16}
+                    color={
+                      message.tone === "warning"
+                        ? Colors.xpGold
+                        : message.tone === "success"
+                        ? Colors.success
+                        : Colors.primary
+                    }
+                  />
+                </View>
+                <View style={styles.systemCopy}>
+                  <Text style={styles.systemTitle}>{message.title}</Text>
+                  <Text style={styles.systemBody}>{message.body}</Text>
+                </View>
+              </View>
+            ))}
+            <Pressable
+              onPress={() => setPreviewRankIndex(1)}
+              style={({ pressed }) => [styles.systemTestButton, pressed && styles.pressed]}
+            >
+              <Ionicons name="flask" size={16} color={Colors.xpGold} />
+              <Text style={styles.systemTestButtonText}>Preview Rank Promotions</Text>
+            </Pressable>
+          </View>
+
           <View style={styles.sectionHeader}>
             <Ionicons name="stats-chart" size={18} color={Colors.primary} />
             <Text style={styles.sectionTitle}>Hunter Stats</Text>
@@ -430,10 +796,95 @@ export default function HunterDashboard() {
                   ]}
                 />
               </View>
+              <View style={styles.nextRankMetaRow}>
+                <Text style={styles.nextRankMetaText}>
+                  XP to next promotion: {xpToNextPromotion}
+                </Text>
+              </View>
             </View>
           </Animated.View>
         )}
       </ScrollView>
+
+      <Modal visible={!!activePromotion} transparent animationType="fade">
+        <View style={styles.rankUpOverlay}>
+          <Animated.View
+            key={`rank-promo-${activePromotion?.to.rank ?? "none"}-${previewRankIndex ?? "live"}`}
+            entering={FadeInDown.duration(420)}
+            style={styles.rankUpCard}
+          >
+            <LinearGradient
+              colors={rankCeremony.colors}
+              style={styles.rankUpGradient}
+            >
+              <PromotionAura
+                color={rankCeremony.iconColor}
+                shadowOpacity={rankCeremony.shadowOpacity}
+                scanOpacity={rankCeremony.scanOpacity}
+                mode={rankCeremony.mode}
+              />
+              <View style={[styles.rankUpAccentBar, { backgroundColor: rankCeremony.iconColor }]} />
+              <View style={[styles.rankUpHalo, { backgroundColor: rankCeremony.glow }]} />
+              <Ionicons name={rankCeremony.icon as any} size={54} color={rankCeremony.iconColor} />
+              <Text style={[styles.rankUpSystemText, { color: rankCeremony.iconColor }]}>
+                {rankCeremony.systemLine}
+              </Text>
+              <Text style={styles.rankUpTitle}>Rank Promotion</Text>
+              <Text style={styles.rankUpFrom}>
+                {activePromotion?.from.title} to{" "}
+                <Text style={{ color: activePromotion?.to.color }}>
+                  {activePromotion?.to.title}
+                </Text>
+              </Text>
+              <View style={styles.rankUpBadgeRow}>
+                <View style={[styles.rankUpBadge, { borderColor: activePromotion?.to.color ?? Colors.xpGold }]}>
+                  <Text style={[styles.rankUpBadgeText, { color: activePromotion?.to.color ?? Colors.xpGold }]}>
+                    {activePromotion?.to.rank}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.rankUpBody}>{rankCeremony.body}</Text>
+              {previewRankUp ? (
+                <View style={styles.rankPreviewControls}>
+                  <Pressable
+                    style={[styles.rankPreviewButton, previewRankIndex === 1 && styles.rankPreviewButtonDisabled]}
+                    onPress={() => setPreviewRankIndex((current) => (current && current > 1 ? current - 1 : current))}
+                    disabled={previewRankIndex === 1}
+                  >
+                    <Text style={styles.rankPreviewButtonText}>Previous</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.rankPreviewButton, styles.rankPreviewButtonPrimary]}
+                    onPress={() =>
+                      setPreviewRankIndex((current) =>
+                        current !== null && current < RANKS.length - 1 ? current + 1 : 1
+                      )
+                    }
+                  >
+                    <Text style={styles.rankPreviewButtonPrimaryText}>
+                      {previewRankIndex === RANKS.length - 1 ? "Loop" : "Next"}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+              <Pressable
+                style={styles.rankUpButton}
+                onPress={() => {
+                  if (previewRankUp) {
+                    setPreviewRankIndex(null);
+                    return;
+                  }
+                  dismissRankUp();
+                }}
+              >
+                <Text style={styles.rankUpButtonText}>
+                  {previewRankUp ? "Close Preview" : "Accept Promotion"}
+                </Text>
+              </Pressable>
+            </LinearGradient>
+          </Animated.View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -644,6 +1095,56 @@ const styles = StyleSheet.create({
   },
   statBarFill: { height: "100%", borderRadius: 4 },
   statValue: { fontSize: 14, fontWeight: "700", width: 30, textAlign: "right" },
+  systemCard: {
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 14,
+  },
+  systemMessageRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  systemIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  systemIconPrimary: { backgroundColor: Colors.primary + "18" },
+  systemIconWarning: { backgroundColor: Colors.xpGold + "18" },
+  systemIconSuccess: { backgroundColor: Colors.success + "18" },
+  systemCopy: { flex: 1 },
+  systemTitle: { color: Colors.text, fontSize: 14, fontWeight: "700" },
+  systemBody: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 4,
+  },
+  systemTestButton: {
+    marginTop: 4,
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: Colors.background,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  systemTestButtonText: {
+    color: Colors.xpGold,
+    fontSize: 12,
+    fontWeight: "700",
+  },
 
   achievementSummaryCard: {
     backgroundColor: Colors.surface,
@@ -734,5 +1235,225 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   nextRankFill: { height: "100%", borderRadius: 3 },
+  nextRankMetaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 10,
+    gap: 8,
+  },
+  nextRankMetaText: {
+    color: Colors.textMuted,
+    fontSize: 12,
+  },
+  rankUpOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.82)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  rankUpCard: {
+    width: "100%",
+    maxWidth: 360,
+    borderRadius: 24,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: Colors.xpGold + "40",
+  },
+  rankUpGradient: {
+    paddingHorizontal: 24,
+    paddingVertical: 30,
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  promotionAuraWrap: {
+    position: "absolute",
+    top: 28,
+    width: 240,
+    height: 240,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  promotionShadow: {
+    position: "absolute",
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    opacity: 0.18,
+  },
+  promotionRing: {
+    position: "absolute",
+    width: 172,
+    height: 172,
+    borderRadius: 86,
+    borderWidth: 1.5,
+    opacity: 0.2,
+  },
+  promotionRingSecondary: {
+    position: "absolute",
+    width: 206,
+    height: 206,
+    borderRadius: 103,
+    borderWidth: 1,
+    opacity: 0.16,
+  },
+  promotionFlareLeft: {
+    position: "absolute",
+    width: 92,
+    height: 2,
+    left: 8,
+    borderRadius: 999,
+    opacity: 0.22,
+  },
+  promotionFlareRight: {
+    position: "absolute",
+    width: 92,
+    height: 2,
+    right: 8,
+    borderRadius: 999,
+    opacity: 0.22,
+  },
+  promotionPillarLeft: {
+    position: "absolute",
+    width: 16,
+    height: 150,
+    left: 44,
+    borderRadius: 999,
+    opacity: 0.16,
+  },
+  promotionPillarRight: {
+    position: "absolute",
+    width: 16,
+    height: 150,
+    right: 44,
+    borderRadius: 999,
+    opacity: 0.16,
+  },
+  promotionCore: {
+    position: "absolute",
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    opacity: 0.12,
+  },
+  promotionScanLine: {
+    position: "absolute",
+    width: 220,
+    height: 2,
+    borderRadius: 999,
+    opacity: 0.22,
+  },
+  promotionScanLineSecondary: {
+    position: "absolute",
+    width: 180,
+    height: 1.5,
+    borderRadius: 999,
+    opacity: 0.16,
+  },
+  rankUpAccentBar: {
+    position: "absolute",
+    top: 0,
+    left: 24,
+    right: 24,
+    height: 4,
+    borderBottomLeftRadius: 999,
+    borderBottomRightRadius: 999,
+  },
+  rankUpHalo: {
+    position: "absolute",
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    top: -70,
+    opacity: 0.28,
+  },
+  rankUpSystemText: {
+    color: Colors.xpGold,
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+    marginTop: 16,
+  },
+  rankUpTitle: {
+    color: Colors.text,
+    fontSize: 28,
+    fontWeight: "800",
+    marginTop: 10,
+  },
+  rankUpFrom: {
+    color: Colors.textSecondary,
+    fontSize: 15,
+    textAlign: "center",
+    marginTop: 8,
+  },
+  rankUpBadgeRow: {
+    marginTop: 18,
+  },
+  rankUpBadge: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Colors.background,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+  },
+  rankUpBadgeText: {
+    fontSize: 30,
+    fontWeight: "900",
+  },
+  rankUpBody: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: "center",
+    marginTop: 18,
+  },
+  rankPreviewControls: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 22,
+  },
+  rankPreviewButton: {
+    minWidth: 110,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  rankPreviewButtonDisabled: {
+    opacity: 0.45,
+  },
+  rankPreviewButtonPrimary: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary + "40",
+  },
+  rankPreviewButtonText: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  rankPreviewButtonPrimaryText: {
+    color: Colors.background,
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  rankUpButton: {
+    marginTop: 24,
+    backgroundColor: Colors.xpGold,
+    borderRadius: 14,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+  },
+  rankUpButtonText: {
+    color: Colors.background,
+    fontSize: 15,
+    fontWeight: "800",
+  },
 });
 
