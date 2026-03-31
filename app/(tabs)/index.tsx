@@ -386,6 +386,17 @@ function DailyQuestCard({
 export default function HunterDashboard() {
   const insets = useSafeAreaInsets();
   const [previewRankIndex, setPreviewRankIndex] = useState<number | null>(null);
+  const [questRewardNotice, setQuestRewardNotice] = useState<{
+    title: string;
+    body: string;
+  } | null>(null);
+  const [achievementNotice, setAchievementNotice] = useState<{
+    title: string;
+    body: string;
+    color: string;
+    icon: string;
+  } | null>(null);
+  const unlockedAchievementIdsRef = React.useRef<string[]>([]);
   const {
     xp,
     stats,
@@ -412,38 +423,63 @@ export default function HunterDashboard() {
   } = useProgress();
 
   const today = new Date().toDateString();
-  const quests = getAdaptiveDailyQuests(today, {
-    completedLessons,
-    completedChallenges,
-    terminalHistory,
-    currentStreak,
-  });
+  const quests = useMemo(
+    () =>
+      getAdaptiveDailyQuests(today, {
+        completedLessons,
+        completedChallenges,
+        terminalHistory,
+        currentStreak,
+      }),
+    [today, completedLessons, completedChallenges, terminalHistory, currentStreak],
+  );
   const nextLesson = getNextLessonRecommendation(completedLessons);
   const nextRaid = getNextChallengeRecommendation(completedChallenges);
   const upcomingLessons = getRecommendedLessons(completedLessons, 2);
   const upcomingRaids = getRecommendedChallenges(completedChallenges, 2);
-  const achievements = getAchievements({
-    completedLessons,
-    completedChallenges,
-    currentStreak,
-    terminalHistory,
-  });
-  const unlockedAchievements = achievements.filter((achievement) => achievement.unlocked);
-  const nextAchievement = achievements.find((achievement) => !achievement.unlocked) ?? null;
+  const achievements = useMemo(
+    () =>
+      getAchievements({
+        completedLessons,
+        completedChallenges,
+        currentStreak,
+        terminalHistory,
+      }),
+    [completedLessons, completedChallenges, currentStreak, terminalHistory],
+  );
+  const unlockedAchievements = useMemo(
+    () => achievements.filter((achievement) => achievement.unlocked),
+    [achievements],
+  );
+  const nextAchievement = useMemo(
+    () => achievements.find((achievement) => !achievement.unlocked) ?? null,
+    [achievements],
+  );
   const previewRankUp = useMemo(() => {
     if (previewRankIndex === null) return null;
     const to = RANKS[previewRankIndex];
     const from = RANKS[Math.max(previewRankIndex - 1, 0)];
     return { from, to };
   }, [previewRankIndex]);
-  const systemMessages = getSystemMessages({
-    level,
-    currentStreak,
-    essenceShards,
-    completedLessons,
-    completedChallenges,
-    terminalHistory,
-  });
+  const systemMessages = useMemo(
+    () =>
+      getSystemMessages({
+        level,
+        currentStreak,
+        essenceShards,
+        completedLessons,
+        completedChallenges,
+        terminalHistory,
+      }),
+    [
+      level,
+      currentStreak,
+      essenceShards,
+      completedLessons,
+      completedChallenges,
+      terminalHistory,
+    ],
+  );
 
   function getQuestProgress(quest: { type: string }) {
     switch (quest.type) {
@@ -463,6 +499,10 @@ export default function HunterDashboard() {
   function handleClaimQuest(questId: string, xpReward: number) {
     claimDailyQuest(questId);
     addXp(xpReward);
+    setQuestRewardNotice({
+      title: "Daily mission complete",
+      body: `Rewards secured: +${xpReward} XP and +${questShardReward} shards.`,
+    });
   }
 
   const webTop = Platform.OS === "web" ? 67 : 0;
@@ -473,6 +513,7 @@ export default function HunterDashboard() {
   const displayRank = rank.rank;
   const displayName = title;
   const displayedShards = essenceShards ?? 0;
+  const questShardReward = 5;
   const focusLesson = upcomingLessons[0] ?? null;
   const followupLesson = upcomingLessons[1] ?? null;
   const focusRaid = upcomingRaids[0] ?? null;
@@ -482,6 +523,42 @@ export default function HunterDashboard() {
     : 0;
   const activePromotion = previewRankUp ?? pendingRankUp;
   const rankCeremony = getRankCeremony(activePromotion?.to.rank);
+
+  React.useEffect(() => {
+    if (!questRewardNotice) return;
+    const timeout = setTimeout(() => setQuestRewardNotice(null), 3200);
+    return () => clearTimeout(timeout);
+  }, [questRewardNotice]);
+
+  React.useEffect(() => {
+    if (!achievementNotice) return;
+    const timeout = setTimeout(() => setAchievementNotice(null), 4200);
+    return () => clearTimeout(timeout);
+  }, [achievementNotice]);
+
+  React.useEffect(() => {
+    if (!isLoaded) return;
+
+    const unlockedIds = unlockedAchievements.map((achievement) => achievement.id);
+    const previousUnlockedIds = unlockedAchievementIdsRef.current;
+
+    if (previousUnlockedIds.length > 0) {
+      const newlyUnlocked = unlockedAchievements.find(
+        (achievement) => !previousUnlockedIds.includes(achievement.id),
+      );
+
+      if (newlyUnlocked) {
+        setAchievementNotice({
+          title: "Achievement Unlocked",
+          body: `${newlyUnlocked.title} secured. ${newlyUnlocked.description}`,
+          color: newlyUnlocked.color,
+          icon: newlyUnlocked.icon,
+        });
+      }
+    }
+
+    unlockedAchievementIdsRef.current = unlockedIds;
+  }, [isLoaded, unlockedAchievements]);
 
   if (!isLoaded) {
     return (
@@ -615,6 +692,42 @@ export default function HunterDashboard() {
               <Text style={styles.systemTestButtonText}>Preview Rank Promotions</Text>
             </Pressable>
           </View>
+
+          {questRewardNotice ? (
+            <Animated.View entering={FadeInDown.duration(260)} style={styles.rewardNoticeCard}>
+              <View style={[styles.rewardNoticeIcon, styles.rewardNoticeQuestIcon]}>
+                <Ionicons name="checkmark-done-circle" size={18} color={Colors.success} />
+              </View>
+              <View style={styles.rewardNoticeCopy}>
+                <Text style={styles.rewardNoticeTitle}>{questRewardNotice.title}</Text>
+                <Text style={styles.rewardNoticeBody}>{questRewardNotice.body}</Text>
+              </View>
+            </Animated.View>
+          ) : null}
+
+          {achievementNotice ? (
+            <Animated.View
+              entering={FadeInDown.duration(260)}
+              style={[styles.rewardNoticeCard, styles.achievementNoticeCard]}
+            >
+              <View
+                style={[
+                  styles.rewardNoticeIcon,
+                  { backgroundColor: achievementNotice.color + "20" },
+                ]}
+              >
+                <Ionicons
+                  name={achievementNotice.icon as any}
+                  size={18}
+                  color={achievementNotice.color}
+                />
+              </View>
+              <View style={styles.rewardNoticeCopy}>
+                <Text style={styles.rewardNoticeTitle}>{achievementNotice.title}</Text>
+                <Text style={styles.rewardNoticeBody}>{achievementNotice.body}</Text>
+              </View>
+            </Animated.View>
+          ) : null}
 
           <View style={styles.sectionHeader}>
             <Ionicons name="stats-chart" size={18} color={Colors.primary} />
@@ -1145,6 +1258,45 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
   },
+  rewardNoticeCard: {
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.success + "30",
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  achievementNoticeCard: {
+    borderColor: Colors.xpGold + "28",
+  },
+  rewardNoticeIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  rewardNoticeQuestIcon: {
+    backgroundColor: Colors.success + "14",
+  },
+  rewardNoticeCopy: {
+    flex: 1,
+  },
+  rewardNoticeTitle: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  rewardNoticeBody: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 4,
+  },
 
   achievementSummaryCard: {
     backgroundColor: Colors.surface,
@@ -1456,4 +1608,3 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 });
-

@@ -65,6 +65,11 @@ function getTerminalPreviewTheme(themeId: string) {
 
 export default function ShopScreen() {
   const insets = useSafeAreaInsets();
+  const [feedback, setFeedback] = React.useState<{
+    tone: "success" | "warning";
+    title: string;
+    body: string;
+  } | null>(null);
   const {
     essenceShards,
     ownedTitles,
@@ -115,12 +120,33 @@ export default function ShopScreen() {
       if (item.category === "title") equipTitle(item.unlockValue);
       if (item.category === "frame") equipFrame(item.unlockValue);
       if (item.category === "theme") equipTheme(item.unlockValue);
+      setFeedback({
+        tone: "success",
+        title: `${item.title} equipped`,
+        body: `Your hunter loadout now uses this ${item.category}.`,
+      });
       return;
     }
 
-    if (item.category === "title") unlockTitle(item.unlockValue, item.cost);
-    if (item.category === "frame") unlockFrame(item.unlockValue, item.cost);
-    if (item.category === "theme") unlockTheme(item.unlockValue, item.cost);
+    let unlocked = false;
+    if (item.category === "title") unlocked = unlockTitle(item.unlockValue, item.cost);
+    if (item.category === "frame") unlocked = unlockFrame(item.unlockValue, item.cost);
+    if (item.category === "theme") unlocked = unlockTheme(item.unlockValue, item.cost);
+
+    if (unlocked) {
+      setFeedback({
+        tone: "success",
+        title: `${item.title} unlocked`,
+        body: `${item.cost} shards consumed. The new ${item.category} is active now.`,
+      });
+      return;
+    }
+
+    setFeedback({
+      tone: "warning",
+      title: "Not enough shards",
+      body: `You need ${item.cost - essenceShards} more shard${item.cost - essenceShards === 1 ? "" : "s"} to unlock ${item.title}.`,
+    });
   }
 
   return (
@@ -155,6 +181,36 @@ export default function ShopScreen() {
             <Text style={styles.previewText}>Active frame: {activeFrame} · Active theme: {activeTheme}</Text>
           </View>
         </Animated.View>
+
+        {feedback ? (
+          <Animated.View
+            entering={FadeInDown.duration(250)}
+            style={[
+              styles.feedbackCard,
+              feedback.tone === "success" ? styles.feedbackSuccess : styles.feedbackWarning,
+            ]}
+          >
+            <View
+              style={[
+                styles.feedbackIcon,
+                feedback.tone === "success" ? styles.feedbackIconSuccess : styles.feedbackIconWarning,
+              ]}
+            >
+              <Ionicons
+                name={feedback.tone === "success" ? "checkmark-circle" : "alert-circle"}
+                size={18}
+                color={feedback.tone === "success" ? Colors.success : Colors.xpGold}
+              />
+            </View>
+            <View style={styles.feedbackCopy}>
+              <Text style={styles.feedbackTitle}>{feedback.title}</Text>
+              <Text style={styles.feedbackBody}>{feedback.body}</Text>
+            </View>
+            <Pressable onPress={() => setFeedback(null)} style={styles.feedbackClose}>
+              <Ionicons name="close" size={16} color={Colors.textMuted} />
+            </Pressable>
+          </Animated.View>
+        ) : null}
 
         <Text style={styles.sectionTitle}>Titles</Text>
         {grouped.titles.map((item, index) => (
@@ -305,6 +361,56 @@ const styles = StyleSheet.create({
   previewCopy: { flex: 1 },
   previewTitle: { color: Colors.text, fontSize: 17, fontWeight: "700" },
   previewText: { color: Colors.textSecondary, fontSize: 13, marginTop: 4 },
+  feedbackCard: {
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 4,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  feedbackSuccess: {
+    backgroundColor: Colors.success + "10",
+    borderColor: Colors.success + "35",
+  },
+  feedbackWarning: {
+    backgroundColor: Colors.xpGold + "10",
+    borderColor: Colors.xpGold + "35",
+  },
+  feedbackIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  feedbackIconSuccess: {
+    backgroundColor: Colors.success + "14",
+  },
+  feedbackIconWarning: {
+    backgroundColor: Colors.xpGold + "14",
+  },
+  feedbackCopy: {
+    flex: 1,
+  },
+  feedbackTitle: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  feedbackBody: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 3,
+  },
+  feedbackClose: {
+    marginLeft: 10,
+    padding: 2,
+  },
   sectionTitle: { color: Colors.text, fontSize: 16, fontWeight: "700", marginHorizontal: 20, marginTop: 18, marginBottom: 10 },
   itemCard: {
     marginHorizontal: 16,

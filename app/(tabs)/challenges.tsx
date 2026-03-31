@@ -44,6 +44,7 @@ const rankColors: Record<string, string> = {
 export default function BossRaids() {
   const insets = useSafeAreaInsets();
   const progressContext = useProgress();
+  const raidShardReward = 15;
   const completedChallengeIds =
     progressContext?.completedChallenges ?? EMPTY_CHALLENGE_IDS;
   const completeChallenge =
@@ -176,7 +177,9 @@ export default function BossRaids() {
         completeChallenge(activeChallenge.id);
         addXp(getReward(activeChallenge));
       }
-      setFeedback("Raid cleared.");
+      setFeedback(
+        `Raid cleared. Rewards secured: +${getReward(activeChallenge)} XP and +${raidShardReward} shards.`,
+      );
       setShowVictory(true);
       return;
     }
@@ -440,6 +443,24 @@ export default function BossRaids() {
                       <Text style={styles.hintText}>
                         {getHints(activeChallenge)[hintIdx]}
                       </Text>
+                    </View>
+                  ) : null}
+
+                  {showVictory ? (
+                    <View style={styles.victoryCard}>
+                      <Text style={styles.victoryLabel}>Rewards Claimed</Text>
+                      <View style={styles.victoryRewardsRow}>
+                        <View style={styles.victoryRewardPill}>
+                          <Text style={styles.victoryRewardText}>
+                            +{getReward(activeChallenge)} XP
+                          </Text>
+                        </View>
+                        <View style={styles.victoryRewardPill}>
+                          <Text style={styles.victoryRewardText}>
+                            +{raidShardReward} Shards
+                          </Text>
+                        </View>
+                      </View>
                     </View>
                   ) : null}
 
@@ -805,6 +826,40 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 14,
     lineHeight: 20,
+  },
+  victoryCard: {
+    backgroundColor: "rgba(74, 222, 128, 0.10)",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(74, 222, 128, 0.32)",
+    padding: 14,
+    marginBottom: 12,
+  },
+  victoryLabel: {
+    color: colors.success,
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 10,
+  },
+  victoryRewardsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  victoryRewardPill: {
+    backgroundColor: colors.cardAlt,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  victoryRewardText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "700",
   },
   feedback: {
     fontSize: 14,
