@@ -5,9 +5,10 @@ import {
   defaultOwnedFrames,
   defaultOwnedThemes,
   defaultOwnedTitles,
-  getDailyQuests,
+  getNewlyMasteredTracks,
   getNextRank,
   getRank,
+  TRACK_MASTERY_SHARD_REWARD,
 } from "@/lib/linux-data";
 
 export interface Stats {
@@ -43,6 +44,7 @@ interface ProgressData {
   dailyProgress: DailyProgress;
   totalPowerUps: number;
   title: string;
+  masteredTracks: string[];
 }
 
 interface ProgressContextValue {
@@ -68,6 +70,12 @@ interface ProgressContextValue {
   nextRank: ReturnType<typeof getNextRank>;
   title: string;
   pendingRankUp: { from: ReturnType<typeof getRank>; to: ReturnType<typeof getRank> } | null;
+  masteredTracks: string[];
+  pendingTrackMastery: {
+    name: string;
+    statType: keyof Stats;
+    shardsAwarded: number;
+  } | null;
   addXp: (amount: number) => void;
   addShards: (amount: number) => void;
   spendShards: (amount: number) => boolean;
@@ -83,6 +91,7 @@ interface ProgressContextValue {
   equipFrame: (frameId: string) => void;
   equipTheme: (themeId: string) => void;
   dismissRankUp: () => void;
+  dismissTrackMastery: () => void;
   isLoaded: boolean;
 }
 
@@ -105,6 +114,7 @@ const defaultProgress: ProgressData = {
   dailyProgress: { lessonsToday: 0, challengesToday: 0, commandsToday: 0, questsClaimed: [] },
   totalPowerUps: 0,
   title: "Novice",
+  masteredTracks: [],
 };
 
 type ServerProgressPayload = Partial<ProgressData> & {
@@ -169,6 +179,11 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     from: ReturnType<typeof getRank>;
     to: ReturnType<typeof getRank>;
   } | null>(null);
+  const [pendingTrackMastery, setPendingTrackMastery] = useState<{
+    name: string;
+    statType: keyof Stats;
+    shardsAwarded: number;
+  } | null>(null);
 
   useEffect(() => {
     loadProgress();
@@ -199,6 +214,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
           completedChallenges: parsed.completedChallenges ?? defaultProgress.completedChallenges,
           terminalHistory: parsed.terminalHistory ?? defaultProgress.terminalHistory,
           essenceShards: parsed.essenceShards ?? defaultProgress.essenceShards,
+          masteredTracks: parsed.masteredTracks ?? defaultProgress.masteredTracks,
         };
         const today = new Date().toDateString();
         const lastActive = mergedStored.lastActiveDate;
@@ -254,6 +270,9 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
           },
           totalPowerUps: Math.max(prev.totalPowerUps, server.totalPowerUps ?? 0),
           title: server.title ?? prev.title,
+          masteredTracks: Array.from(
+            new Set([...(prev.masteredTracks ?? []), ...(server.masteredTracks ?? [])]),
+          ),
         };
         saveProgress(merged);
         return merged;
@@ -288,10 +307,37 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      const final = { ...updated, currentStreak: streak, lastActiveDate: today };
+      const newlyMasteredTracks = getNewlyMasteredTracks(
+        prev.completedLessons,
+        prev.completedChallenges,
+        updated.completedLessons,
+        updated.completedChallenges,
+        updated.masteredTracks ?? [],
+      );
+      const finalMasteredTracks = [
+        ...(updated.masteredTracks ?? []),
+        ...newlyMasteredTracks.map((category) => category.name),
+      ];
+      const final = {
+        ...updated,
+        currentStreak: streak,
+        lastActiveDate: today,
+        essenceShards:
+          updated.essenceShards +
+          newlyMasteredTracks.length * TRACK_MASTERY_SHARD_REWARD,
+        masteredTracks: finalMasteredTracks,
+      };
       const nextRank = getRank(calculateLevel(final.xp));
       if (nextRank.rank !== previousRank.rank) {
         setPendingRankUp({ from: previousRank, to: nextRank });
+      }
+      if (newlyMasteredTracks.length > 0) {
+        const track = newlyMasteredTracks[0];
+        setPendingTrackMastery({
+          name: track.name,
+          statType: track.statType as keyof Stats,
+          shardsAwarded: TRACK_MASTERY_SHARD_REWARD,
+        });
       }
       saveProgress(final);
       void syncProgressToServer(final);
@@ -374,6 +420,10 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
 
   function dismissRankUp() {
     setPendingRankUp(null);
+  }
+
+  function dismissTrackMastery() {
+    setPendingTrackMastery(null);
   }
 
   function unlockTitle(titleToUnlock: string, cost: number) {
@@ -464,6 +514,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       currentStreak: progress.currentStreak,
       terminalHistory: progress.terminalHistory,
       dailyProgress: progress.dailyProgress,
+      masteredTracks: progress.masteredTracks,
       level,
       xpForNextLevel: nextLevelXp,
       xpIntoCurrentLevel: xpInto,
@@ -472,6 +523,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       nextRank: nextR,
       title: progress.title,
       pendingRankUp,
+      pendingTrackMastery,
       addXp,
       addShards,
       spendShards,
@@ -487,9 +539,10 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       equipFrame,
       equipTheme,
       dismissRankUp,
+      dismissTrackMastery,
       isLoaded,
     }),
-    [progress, isLoaded, pendingRankUp]
+    [progress, isLoaded, pendingRankUp, pendingTrackMastery]
   );
 
   return <ProgressContext.Provider value={value}>{children}</ProgressContext.Provider>;

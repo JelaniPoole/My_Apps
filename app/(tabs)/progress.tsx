@@ -16,6 +16,8 @@ import Colors from "@/constants/colors";
 import {
   getAchievements,
   getCommandsByCategory,
+  getCompletedTrackMasteries,
+  getRoadmapProgress,
   RANKS,
 } from "@/lib/linux-data";
 import { useProgress } from "@/lib/progress-context";
@@ -51,6 +53,11 @@ export default function StatsScreen() {
   const webTop = Platform.OS === "web" ? 67 : 0;
   const grouped = getCommandsByCategory();
   const uniqueCommands = new Set(terminalHistory.map((c) => c.split(" ")[0])).size;
+  const trackProgress = getRoadmapProgress(completedLessons, completedChallenges);
+  const completedTrackMasteries = getCompletedTrackMasteries(
+    completedLessons,
+    completedChallenges,
+  );
   const achievements = getAchievements({
     completedLessons,
     completedChallenges,
@@ -108,6 +115,54 @@ export default function StatsScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeInDown.duration(500).delay(200)}>
+          <Text style={styles.sectionTitle}>Track Mastery</Text>
+          <View style={styles.masterySummaryCard}>
+            <View style={styles.masterySummaryHeader}>
+              <View>
+                <Text style={styles.masterySummaryValue}>
+                  {completedTrackMasteries.length}/{Object.keys(trackProgress).length}
+                </Text>
+                <Text style={styles.masterySummaryLabel}>Tracks Mastered</Text>
+              </View>
+              <Ionicons name="school" size={24} color={Colors.accent} />
+            </View>
+            <Text style={styles.masterySummaryText}>
+              Full track clears award milestone shards and mark a whole discipline as mastered.
+            </Text>
+            <View style={styles.masteryTrackList}>
+              {Object.entries(trackProgress).map(([name, progress]) => (
+                <View key={name} style={styles.masteryTrackRow}>
+                  <View style={styles.masteryTrackTop}>
+                    <Text style={styles.masteryTrackName}>{name}</Text>
+                    <Text
+                      style={[
+                        styles.masteryTrackValue,
+                        progress.pct === 1 && styles.masteryTrackValueComplete,
+                      ]}
+                    >
+                      {progress.completed}/{progress.total}
+                    </Text>
+                  </View>
+                  <View style={styles.masteryTrackBarBg}>
+                    <View
+                      style={[
+                        styles.masteryTrackBarFill,
+                        {
+                          width: `${progress.pct * 100}%`,
+                          backgroundColor:
+                            progress.pct === 1 ? Colors.success : Colors.accent,
+                        },
+                      ]}
+                    />
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(500).delay(220)}>
           <Text style={styles.sectionTitle}>Achievements</Text>
           <View style={styles.achievementSummaryCard}>
             <View style={styles.achievementSummaryHeader}>
@@ -291,6 +346,74 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     marginTop: 10,
+  },
+  masterySummaryCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    padding: 14,
+    marginHorizontal: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  masterySummaryHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  masterySummaryValue: {
+    color: Colors.text,
+    fontSize: 24,
+    fontWeight: "800",
+  },
+  masterySummaryLabel: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  masterySummaryText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 10,
+  },
+  masteryTrackList: {
+    marginTop: 12,
+    gap: 8,
+  },
+  masteryTrackRow: {
+    backgroundColor: Colors.background,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  masteryTrackTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  masteryTrackName: {
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  masteryTrackValue: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  masteryTrackValueComplete: {
+    color: Colors.success,
+  },
+  masteryTrackBarBg: {
+    height: 6,
+    borderRadius: 999,
+    overflow: "hidden",
+    backgroundColor: Colors.surface,
+  },
+  masteryTrackBarFill: {
+    height: "100%",
+    borderRadius: 999,
   },
   achievementLinkCard: {
     marginHorizontal: 16,

@@ -26,8 +26,10 @@ import { useProgress } from "@/lib/progress-context";
 import {
   getAchievements,
   getAdaptiveDailyQuests,
+  getCompletedTrackMasteries,
   getRecommendedChallenges,
   getRecommendedLessons,
+  getRoadmapProgress,
   getSystemMessages,
   getNextChallengeRecommendation,
   getNextLessonRecommendation,
@@ -418,7 +420,9 @@ export default function HunterDashboard() {
     addXp,
     claimDailyQuest,
     pendingRankUp,
+    pendingTrackMastery,
     dismissRankUp,
+    dismissTrackMastery,
     isLoaded,
   } = useProgress();
 
@@ -479,6 +483,14 @@ export default function HunterDashboard() {
       completedChallenges,
       terminalHistory,
     ],
+  );
+  const trackProgress = useMemo(
+    () => getRoadmapProgress(completedLessons, completedChallenges),
+    [completedLessons, completedChallenges],
+  );
+  const completedTrackMasteries = useMemo(
+    () => getCompletedTrackMasteries(completedLessons, completedChallenges),
+    [completedLessons, completedChallenges],
   );
 
   function getQuestProgress(quest: { type: string }) {
@@ -874,8 +886,103 @@ export default function HunterDashboard() {
           </View>
 
           <View style={styles.sectionHeader}>
+            <Ionicons name="school" size={18} color={Colors.accent} />
+            <Text style={styles.sectionTitle}>Track Mastery</Text>
+          </View>
+          <View style={styles.masteryCard}>
+            <View style={styles.masteryTopRow}>
+              <View>
+                <Text style={styles.masteryValue}>
+                  {completedTrackMasteries.length}/{Object.keys(trackProgress).length}
+                </Text>
+                <Text style={styles.masteryLabel}>Tracks Cleared</Text>
+              </View>
+              <Ionicons name="layers" size={22} color={Colors.accent} />
+            </View>
+            <Text style={styles.masteryText}>
+              Clear whole learning tracks to earn milestone shard rewards and prove command mastery in each domain.
+            </Text>
+            <View style={styles.masteryPreviewList}>
+              {Object.entries(trackProgress)
+                .filter(([, progress]) => progress.total > 0)
+                .slice(0, 3)
+                .map(([name, progress]) => (
+                  <View key={name} style={styles.masteryPreviewRow}>
+                    <View style={styles.masteryPreviewTop}>
+                      <Text style={styles.masteryPreviewName}>{name}</Text>
+                      <Text style={styles.masteryPreviewValue}>
+                        {progress.completed}/{progress.total}
+                      </Text>
+                    </View>
+                    <View style={styles.masteryPreviewBarBg}>
+                      <View
+                        style={[
+                          styles.masteryPreviewBarFill,
+                          {
+                            width: `${progress.pct * 100}%`,
+                            backgroundColor:
+                              progress.pct === 1 ? Colors.success : Colors.accent,
+                          },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                ))}
+            </View>
+            <View style={styles.masteryPillRow}>
+              {completedTrackMasteries.length > 0 ? (
+                completedTrackMasteries.slice(0, 4).map((track) => (
+                  <View key={track.name} style={styles.masteryPill}>
+                    <Text style={styles.masteryPillText}>{track.name}</Text>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.masteryPillMuted}>
+                  <Text style={styles.masteryPillMutedText}>No mastered tracks yet</Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          <View style={styles.sectionHeader}>
             <Ionicons name="today" size={18} color={Colors.warning} />
             <Text style={styles.sectionTitle}>Daily Quests</Text>
+            <Pressable
+              onPress={() => router.push("/quests")}
+              style={({ pressed }) => [styles.sectionLink, pressed && styles.pressed]}
+            >
+              <Text style={styles.sectionLinkText}>Open Board</Text>
+              <Ionicons name="chevron-forward" size={14} color={Colors.warning} />
+            </Pressable>
+          </View>
+          <View style={styles.questOverviewCard}>
+            <View style={styles.questOverviewTop}>
+              <Text style={styles.questOverviewTitle}>Mission Board Status</Text>
+              <Text style={styles.questOverviewValue}>
+                {
+                  quests.filter(
+                    (quest) => getQuestProgress(quest) >= quest.target,
+                  ).length
+                }
+                /{quests.length}
+              </Text>
+            </View>
+            <View style={styles.questOverviewBarBg}>
+              <View
+                style={[
+                  styles.questOverviewBarFill,
+                  {
+                    width: `${
+                      (quests.filter(
+                        (quest) => getQuestProgress(quest) >= quest.target,
+                      ).length /
+                        Math.max(quests.length, 1)) *
+                      100
+                    }%`,
+                  },
+                ]}
+              />
+            </View>
           </View>
           {quests.map((quest) => (
             <DailyQuestCard
@@ -998,6 +1105,48 @@ export default function HunterDashboard() {
           </Animated.View>
         </View>
       </Modal>
+
+      <Modal visible={!!pendingTrackMastery} transparent animationType="fade">
+        <View style={styles.rankUpOverlay}>
+          <Animated.View
+            key={`track-mastery-${pendingTrackMastery?.name ?? "none"}`}
+            entering={FadeInDown.duration(360)}
+            style={styles.trackMasteryModal}
+          >
+            <LinearGradient
+              colors={[Colors.accent + "28", Colors.surface]}
+              style={styles.trackMasteryGradient}
+            >
+              <Ionicons name="school" size={48} color={Colors.accent} />
+              <Text style={styles.trackMasteryEyebrow}>Track Mastered</Text>
+              <Text style={styles.trackMasteryTitle}>{pendingTrackMastery?.name}</Text>
+              <Text style={styles.trackMasteryBody}>
+                The System recognizes full mastery of this discipline. Your hunter profile grows stronger with every completed domain.
+              </Text>
+              <View style={styles.trackMasteryRewardRow}>
+                <View style={styles.trackMasteryRewardPill}>
+                  <Text style={styles.trackMasteryRewardText}>
+                    +{pendingTrackMastery?.shardsAwarded ?? 0} Shards
+                  </Text>
+                </View>
+                <View style={styles.trackMasteryRewardPill}>
+                  <Text
+                    style={[
+                      styles.trackMasteryRewardText,
+                      { color: STAT_META[pendingTrackMastery?.statType ?? "INT"].color },
+                    ]}
+                  >
+                    {pendingTrackMastery?.statType} path complete
+                  </Text>
+                </View>
+              </View>
+              <Pressable style={styles.rankUpButton} onPress={dismissTrackMastery}>
+                <Text style={styles.rankUpButtonText}>Claim Mastery</Text>
+              </Pressable>
+            </LinearGradient>
+          </Animated.View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1061,6 +1210,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sectionTitle: { color: Colors.text, fontSize: 16, fontWeight: "700" },
+  sectionLink: {
+    marginLeft: "auto",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 4,
+  },
+  sectionLinkText: {
+    color: Colors.warning,
+    fontSize: 12,
+    fontWeight: "700",
+  },
   activePathColumn: {
     gap: 10,
   },
@@ -1297,6 +1458,42 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     marginTop: 4,
   },
+  questOverviewCard: {
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  questOverviewTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  questOverviewTitle: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  questOverviewValue: {
+    color: Colors.warning,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  questOverviewBarBg: {
+    height: 6,
+    borderRadius: 999,
+    overflow: "hidden",
+    backgroundColor: Colors.background,
+  },
+  questOverviewBarFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: Colors.warning,
+  },
 
   achievementSummaryCard: {
     backgroundColor: Colors.surface,
@@ -1332,6 +1529,99 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     marginTop: 6,
+  },
+  masteryCard: {
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  masteryTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  masteryValue: {
+    color: Colors.text,
+    fontSize: 22,
+    fontWeight: "800",
+  },
+  masteryLabel: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  masteryText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 10,
+  },
+  masteryPreviewList: {
+    marginTop: 12,
+    gap: 10,
+  },
+  masteryPreviewRow: {
+    gap: 6,
+  },
+  masteryPreviewTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  masteryPreviewName: {
+    color: Colors.text,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  masteryPreviewValue: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  masteryPreviewBarBg: {
+    height: 5,
+    borderRadius: 999,
+    overflow: "hidden",
+    backgroundColor: Colors.background,
+  },
+  masteryPreviewBarFill: {
+    height: "100%",
+    borderRadius: 999,
+  },
+  masteryPillRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 12,
+  },
+  masteryPill: {
+    backgroundColor: Colors.background,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.accent + "24",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  masteryPillText: {
+    color: Colors.accent,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  masteryPillMuted: {
+    backgroundColor: Colors.background,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  masteryPillMutedText: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    fontWeight: "600",
   },
 
   questCard: {
@@ -1606,5 +1896,60 @@ const styles = StyleSheet.create({
     color: Colors.background,
     fontSize: 15,
     fontWeight: "800",
+  },
+  trackMasteryModal: {
+    width: "100%",
+    maxWidth: 360,
+    borderRadius: 24,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: Colors.accent + "35",
+  },
+  trackMasteryGradient: {
+    paddingHorizontal: 24,
+    paddingVertical: 30,
+    alignItems: "center",
+  },
+  trackMasteryEyebrow: {
+    color: Colors.accent,
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+    marginTop: 14,
+  },
+  trackMasteryTitle: {
+    color: Colors.text,
+    fontSize: 28,
+    fontWeight: "800",
+    marginTop: 10,
+    textAlign: "center",
+  },
+  trackMasteryBody: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: "center",
+    marginTop: 16,
+  },
+  trackMasteryRewardRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 10,
+    marginTop: 20,
+  },
+  trackMasteryRewardPill: {
+    backgroundColor: Colors.background,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  trackMasteryRewardText: {
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: "700",
   },
 });

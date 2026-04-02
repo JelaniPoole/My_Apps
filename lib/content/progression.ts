@@ -139,6 +139,8 @@ export const roadmapCategories: CategoryRoadmap[] = [
   { name: "Advanced", icon: "construct", lessons: ["20"], challenges: ["c50"], statType: "AGI" },
 ];
 
+export const TRACK_MASTERY_SHARD_REWARD = 30;
+
 export function getRoadmapProgress(completedLessons: string[], completedChallenges: string[]) {
   const progress: Record<string, { completed: number; total: number; pct: number }> = {};
 
@@ -151,6 +153,46 @@ export function getRoadmapProgress(completedLessons: string[], completedChalleng
   });
 
   return progress;
+}
+
+export function getCompletedTrackMasteries(
+  completedLessons: string[],
+  completedChallenges: string[],
+) {
+  return roadmapCategories.filter((category) => {
+    const total = category.lessons.length + category.challenges.length;
+    if (total === 0) return false;
+
+    const lessonsDone = category.lessons.filter((id) =>
+      completedLessons.includes(id),
+    ).length;
+    const challengesDone = category.challenges.filter((id) =>
+      completedChallenges.includes(id),
+    ).length;
+
+    return lessonsDone + challengesDone === total;
+  });
+}
+
+export function getNewlyMasteredTracks(
+  previousLessons: string[],
+  previousChallenges: string[],
+  nextLessons: string[],
+  nextChallenges: string[],
+  alreadyMasteredTracks: string[],
+) {
+  const previousMastered = new Set(
+    getCompletedTrackMasteries(previousLessons, previousChallenges).map(
+      (category) => category.name,
+    ),
+  );
+  const nextMastered = getCompletedTrackMasteries(nextLessons, nextChallenges);
+
+  return nextMastered.filter(
+    (category) =>
+      !previousMastered.has(category.name) &&
+      !alreadyMasteredTracks.includes(category.name),
+  );
 }
 
 export function getRecommendedLessons(
