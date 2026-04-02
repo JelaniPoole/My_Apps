@@ -5,6 +5,7 @@ import {
   defaultOwnedFrames,
   defaultOwnedThemes,
   defaultOwnedTitles,
+  getNewlyUnlockedWorldZones,
   getTrackCosmeticReward,
   getNewlyMasteredTracks,
   getNextRank,
@@ -72,6 +73,12 @@ interface ProgressContextValue {
   rank: ReturnType<typeof getRank>;
   nextRank: ReturnType<typeof getNextRank>;
   title: string;
+  pendingLevelUp: {
+    fromLevel: number;
+    toLevel: number;
+    xpGained: number;
+    statGain: number;
+  } | null;
   pendingRankUp: { from: ReturnType<typeof getRank>; to: ReturnType<typeof getRank> } | null;
   masteredTracks: string[];
   pendingTrackMastery: {
@@ -83,6 +90,14 @@ interface ProgressContextValue {
       label: string;
       color: string;
     } | null;
+  } | null;
+  pendingZoneUnlock: {
+    trackName: string;
+    zoneName: string;
+    tagline: string;
+    accent: string;
+    dangerRating: string;
+    threatLabel: string;
   } | null;
   addXp: (amount: number) => void;
   addShards: (amount: number) => void;
@@ -99,12 +114,15 @@ interface ProgressContextValue {
   equipTitle: (title: string) => void;
   equipFrame: (frameId: string) => void;
   equipTheme: (themeId: string) => void;
+  dismissLevelUp: () => void;
   dismissRankUp: () => void;
   dismissTrackMastery: () => void;
+  dismissZoneUnlock: () => void;
   isLoaded: boolean;
 }
 
 const STORAGE_KEY = "@terminal_quest_progress_v2";
+const STORE_TEST_SHARD_FLOOR = 999;
 
 const defaultProgress: ProgressData = {
   xp: 0,
@@ -190,6 +208,12 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     from: ReturnType<typeof getRank>;
     to: ReturnType<typeof getRank>;
   } | null>(null);
+  const [pendingLevelUp, setPendingLevelUp] = useState<{
+    fromLevel: number;
+    toLevel: number;
+    xpGained: number;
+    statGain: number;
+  } | null>(null);
   const [pendingTrackMastery, setPendingTrackMastery] = useState<{
     name: string;
     statType: keyof Stats;
@@ -199,6 +223,14 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       label: string;
       color: string;
     } | null;
+  } | null>(null);
+  const [pendingZoneUnlock, setPendingZoneUnlock] = useState<{
+    trackName: string;
+    zoneName: string;
+    tagline: string;
+    accent: string;
+    dangerRating: string;
+    threatLabel: string;
   } | null>(null);
 
   useEffect(() => {
@@ -230,7 +262,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
           completedLessons: parsed.completedLessons ?? defaultProgress.completedLessons,
           completedChallenges: parsed.completedChallenges ?? defaultProgress.completedChallenges,
           terminalHistory: parsed.terminalHistory ?? defaultProgress.terminalHistory,
-          essenceShards: parsed.essenceShards ?? defaultProgress.essenceShards,
+          essenceShards: Math.max(parsed.essenceShards ?? defaultProgress.essenceShards, STORE_TEST_SHARD_FLOOR),
           masteredTracks: parsed.masteredTracks ?? defaultProgress.masteredTracks,
         };
         const today = new Date().toDateString();
@@ -259,7 +291,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
         const merged: ProgressData = {
           ...prev,
           xp: Math.max(prev.xp, server.xp ?? 0),
-          essenceShards: Math.max(prev.essenceShards, server.essenceShards ?? 0),
+          essenceShards: Math.max(prev.essenceShards, server.essenceShards ?? 0, STORE_TEST_SHARD_FLOOR),
           stats: {
             STR: Math.max(prev.stats.STR, server.stats?.STR ?? 0),
             INT: Math.max(prev.stats.INT, server.stats?.INT ?? 0),
@@ -311,6 +343,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
   function updateProgress(updater: (prev: ProgressData) => ProgressData) {
     setProgress((prev) => {
       const today = new Date().toDateString();
+      const previousLevel = calculateLevel(prev.xp);
       const previousRank = getRank(calculateLevel(prev.xp));
       const updated = updater(prev);
 
@@ -331,6 +364,12 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
         updated.completedLessons,
         updated.completedChallenges,
         updated.masteredTracks ?? [],
+      );
+      const newlyUnlockedZones = getNewlyUnlockedWorldZones(
+        prev.completedLessons,
+        prev.completedChallenges,
+        updated.completedLessons,
+        updated.completedChallenges,
       );
       const primaryTrackReward =
         newlyMasteredTracks.length > 0
@@ -381,7 +420,17 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
           };
         }
       }
+      const nextLevel = calculateLevel(final.xp);
       const nextRank = getRank(calculateLevel(final.xp));
+      const gainedXp = Math.max(0, final.xp - prev.xp);
+      if (nextLevel > previousLevel) {
+        setPendingLevelUp({
+          fromLevel: previousLevel,
+          toLevel: nextLevel,
+          xpGained: gainedXp,
+          statGain: Math.max(1, nextLevel - previousLevel),
+        });
+      }
       if (nextRank.rank !== previousRank.rank) {
         setPendingRankUp({ from: previousRank, to: nextRank });
       }
@@ -398,6 +447,17 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
                 color: primaryTrackReward.color,
               }
             : null,
+        });
+      }
+      if (newlyUnlockedZones.length > 0) {
+        const zone = newlyUnlockedZones[0];
+        setPendingZoneUnlock({
+          trackName: zone.trackName,
+          zoneName: zone.zoneName,
+          tagline: zone.tagline,
+          accent: zone.accent,
+          dangerRating: zone.dangerRating,
+          threatLabel: zone.threatLabel,
         });
       }
       saveProgress(final);
@@ -489,8 +549,16 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     setPendingRankUp(null);
   }
 
+  function dismissLevelUp() {
+    setPendingLevelUp(null);
+  }
+
   function dismissTrackMastery() {
     setPendingTrackMastery(null);
+  }
+
+  function dismissZoneUnlock() {
+    setPendingZoneUnlock(null);
   }
 
   function unlockTitle(titleToUnlock: string, cost: number) {
@@ -590,8 +658,10 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       rank,
       nextRank: nextR,
       title: progress.title,
+      pendingLevelUp,
       pendingRankUp,
       pendingTrackMastery,
+      pendingZoneUnlock,
       addXp,
       addShards,
       spendShards,
@@ -607,11 +677,13 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       equipTitle,
       equipFrame,
       equipTheme,
+      dismissLevelUp,
       dismissRankUp,
       dismissTrackMastery,
+      dismissZoneUnlock,
       isLoaded,
     }),
-    [progress, isLoaded, pendingRankUp, pendingTrackMastery]
+    [progress, isLoaded, pendingLevelUp, pendingRankUp, pendingTrackMastery, pendingZoneUnlock]
   );
 
   return <ProgressContext.Provider value={value}>{children}</ProgressContext.Provider>;

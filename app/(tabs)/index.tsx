@@ -422,10 +422,14 @@ export default function HunterDashboard() {
     dailyProgress,
     addXp,
     claimDailyQuest,
+    pendingLevelUp,
     pendingRankUp,
     pendingTrackMastery,
+    pendingZoneUnlock,
+    dismissLevelUp,
     dismissRankUp,
     dismissTrackMastery,
+    dismissZoneUnlock,
     isLoaded,
   } = useProgress();
 
@@ -544,6 +548,8 @@ export default function HunterDashboard() {
   const xpToNextPromotion = nextRank
     ? Math.max(0, xpForNextLevel - xpIntoCurrentLevel)
     : 0;
+  const xpToNextLevel = Math.max(0, xpForNextLevel - xpIntoCurrentLevel);
+  const activeLevelUp = pendingLevelUp;
   const activePromotion = previewRankUp ?? pendingRankUp;
   const rankCeremony = getRankCeremony(activePromotion?.to.rank);
 
@@ -1092,6 +1098,115 @@ export default function HunterDashboard() {
           </Animated.View>
         )}
       </ScrollView>
+
+      <Modal visible={!!activeLevelUp} transparent animationType="fade">
+        <View style={styles.rankUpOverlay}>
+          <Animated.View
+            key={`level-up-${activeLevelUp?.toLevel ?? "none"}`}
+            entering={FadeInDown.duration(360)}
+            style={styles.levelUpCard}
+          >
+            <LinearGradient colors={[Colors.success + "26", Colors.surface]} style={styles.levelUpGradient}>
+              <View style={styles.levelBurstHalo} />
+              <Ionicons name="trending-up" size={52} color={Colors.success} />
+              <Text style={styles.levelUpEyebrow}>Level Up</Text>
+              <Text style={styles.levelUpTitle}>The System has recognized your growth</Text>
+              <Text style={styles.levelUpFrom}>
+                Level {activeLevelUp?.fromLevel} to <Text style={{ color: Colors.success }}>Level {activeLevelUp?.toLevel}</Text>
+              </Text>
+              <Text style={styles.levelUpBody}>
+                Your hunter parameters have risen. New pressure signatures, stronger gates, and sharper rewards are now within reach.
+              </Text>
+              <View style={styles.levelUpRewardRow}>
+                <View style={styles.levelUpRewardPill}>
+                  <Text style={styles.levelUpRewardText}>+{activeLevelUp?.xpGained ?? 0} XP secured</Text>
+                </View>
+                <View style={styles.levelUpRewardPill}>
+                  <Text style={[styles.levelUpRewardText, { color: Colors.primary }]}>
+                    +{activeLevelUp?.statGain ?? 1} growth surge
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.levelMeterCard}>
+                <View style={styles.levelMeterHeader}>
+                  <Text style={styles.levelMeterLabel}>Rank meter movement</Text>
+                  <Text style={styles.levelMeterValue}>{xpToNextLevel} XP to next level</Text>
+                </View>
+                <View style={styles.levelMeterBg}>
+                  <LinearGradient
+                    colors={[Colors.success, Colors.primary]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[styles.levelMeterFill, { width: `${xpProgress * 100}%` }]}
+                  />
+                </View>
+              </View>
+              <Pressable style={styles.rankUpButton} onPress={dismissLevelUp}>
+                <Text style={styles.rankUpButtonText}>Continue Hunt</Text>
+              </Pressable>
+            </LinearGradient>
+          </Animated.View>
+        </View>
+      </Modal>
+
+      <Modal visible={!!pendingZoneUnlock} transparent animationType="fade">
+        <View style={styles.rankUpOverlay}>
+          <Animated.View
+            key={`zone-unlock-${pendingZoneUnlock?.zoneName ?? "none"}`}
+            entering={FadeInDown.duration(380)}
+            style={styles.zoneUnlockCard}
+          >
+            <LinearGradient
+              colors={[
+                (pendingZoneUnlock?.accent ?? Colors.primary) + "2A",
+                Colors.surface,
+              ] as [string, string]}
+              style={styles.zoneUnlockGradient}
+            >
+              <View style={[styles.zoneUnlockGateGlow, { backgroundColor: pendingZoneUnlock?.accent ?? Colors.primary }]} />
+              <Text style={[styles.zoneUnlockEyebrow, { color: pendingZoneUnlock?.accent ?? Colors.primary }]}>
+                New Gate Detected
+              </Text>
+              <Text style={styles.zoneUnlockTitle}>{pendingZoneUnlock?.zoneName}</Text>
+              <Text style={styles.zoneUnlockBody}>
+                {pendingZoneUnlock?.tagline} The System has opened a fresh route and marked the area for active exploration.
+              </Text>
+              <View style={styles.zoneUnlockPillRow}>
+                <View style={styles.zoneUnlockPill}>
+                  <Text style={styles.zoneUnlockPillText}>
+                    Danger: {pendingZoneUnlock?.dangerRating ?? "Low"}
+                  </Text>
+                </View>
+                <View style={styles.zoneUnlockPill}>
+                  <Text style={[styles.zoneUnlockPillText, { color: pendingZoneUnlock?.accent ?? Colors.primary }]}>
+                    {pendingZoneUnlock?.trackName}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.zoneUnlockAlertCard}>
+                <Text style={styles.zoneUnlockAlertLabel}>System Warning</Text>
+                <Text style={styles.zoneUnlockAlertText}>
+                  {pendingZoneUnlock?.threatLabel ?? "Presence detected beyond the gate."}
+                </Text>
+              </View>
+              <View style={styles.zoneUnlockActionRow}>
+                <Pressable style={styles.secondaryCeremonyButton} onPress={dismissZoneUnlock}>
+                  <Text style={styles.secondaryCeremonyButtonText}>Later</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.rankUpButton}
+                  onPress={() => {
+                    dismissZoneUnlock();
+                    router.push("/world");
+                  }}
+                >
+                  <Text style={styles.rankUpButtonText}>Enter Zone</Text>
+                </Pressable>
+              </View>
+            </LinearGradient>
+          </Animated.View>
+        </View>
+      </Modal>
 
       <Modal visible={!!activePromotion} transparent animationType="fade">
         <View style={styles.rankUpOverlay}>
@@ -1858,6 +1973,214 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderWidth: 1,
     borderColor: Colors.xpGold + "40",
+  },
+  levelUpCard: {
+    width: "100%",
+    maxWidth: 360,
+    borderRadius: 24,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: Colors.success + "45",
+  },
+  levelUpGradient: {
+    paddingHorizontal: 24,
+    paddingVertical: 28,
+    alignItems: "center",
+    position: "relative",
+    overflow: "hidden",
+  },
+  levelBurstHalo: {
+    position: "absolute",
+    top: 24,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: Colors.success,
+    opacity: 0.12,
+  },
+  levelUpEyebrow: {
+    color: Colors.success,
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
+    marginTop: 16,
+  },
+  levelUpTitle: {
+    color: Colors.text,
+    fontSize: 28,
+    fontWeight: "800",
+    textAlign: "center",
+    marginTop: 10,
+  },
+  levelUpFrom: {
+    color: Colors.textSecondary,
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 10,
+  },
+  levelUpBody: {
+    color: Colors.textSecondary,
+    fontSize: 15,
+    lineHeight: 23,
+    textAlign: "center",
+    marginTop: 14,
+  },
+  levelUpRewardRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 10,
+    marginTop: 18,
+  },
+  levelUpRewardPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.success + "35",
+    backgroundColor: Colors.background,
+  },
+  levelUpRewardText: {
+    color: Colors.success,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  levelMeterCard: {
+    width: "100%",
+    marginTop: 18,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+  },
+  levelMeterHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+    gap: 12,
+  },
+  levelMeterLabel: {
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  levelMeterValue: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  levelMeterBg: {
+    height: 10,
+    borderRadius: 999,
+    overflow: "hidden",
+    backgroundColor: Colors.surface,
+  },
+  levelMeterFill: {
+    height: "100%",
+    borderRadius: 999,
+  },
+  zoneUnlockCard: {
+    width: "100%",
+    maxWidth: 380,
+    borderRadius: 26,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: Colors.primary + "45",
+  },
+  zoneUnlockGradient: {
+    paddingHorizontal: 24,
+    paddingVertical: 28,
+    position: "relative",
+  },
+  zoneUnlockGateGlow: {
+    position: "absolute",
+    top: 12,
+    right: -28,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    opacity: 0.16,
+  },
+  zoneUnlockEyebrow: {
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 1.8,
+    textTransform: "uppercase",
+  },
+  zoneUnlockTitle: {
+    color: Colors.text,
+    fontSize: 30,
+    fontWeight: "800",
+    marginTop: 10,
+  },
+  zoneUnlockBody: {
+    color: Colors.textSecondary,
+    fontSize: 15,
+    lineHeight: 23,
+    marginTop: 12,
+  },
+  zoneUnlockPillRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 18,
+  },
+  zoneUnlockPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+  },
+  zoneUnlockPillText: {
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  zoneUnlockAlertCard: {
+    marginTop: 18,
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.primary + "28",
+    backgroundColor: Colors.background,
+  },
+  zoneUnlockAlertLabel: {
+    color: Colors.xpGold,
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 1.4,
+  },
+  zoneUnlockAlertText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 8,
+  },
+  zoneUnlockActionRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 22,
+  },
+  secondaryCeremonyButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.background,
+  },
+  secondaryCeremonyButtonText: {
+    color: Colors.textSecondary,
+    fontSize: 15,
+    fontWeight: "700",
   },
   rankUpGradient: {
     paddingHorizontal: 24,

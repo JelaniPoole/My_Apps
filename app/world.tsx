@@ -26,6 +26,14 @@ function ZoneCard({
 }) {
   const isLocked = zone.state === "locked";
   const isMastered = zone.state === "mastered";
+  const gateLabel =
+    zone.gateState === "sealed"
+      ? "Sealed"
+      : zone.gateState === "unstable"
+      ? "Unstable"
+      : zone.gateState === "cleared"
+      ? "Cleared"
+      : "Open";
 
   return (
     <Pressable
@@ -80,12 +88,28 @@ function ZoneCard({
                   : styles.zoneStateTextOpen,
               ]}
             >
-              {isLocked ? "Sealed" : isMastered ? "Cleared" : "Open"}
+              {gateLabel}
             </Text>
           </View>
         </View>
 
         <Text style={styles.zoneAtmosphere}>{zone.atmosphere}</Text>
+
+        <View style={styles.zonePressureRow}>
+          <View style={styles.zonePressurePill}>
+            <Text style={styles.zonePressureText}>Danger {zone.dangerRating}</Text>
+          </View>
+          <View style={styles.zonePressurePill}>
+            <Text style={[styles.zonePressureText, { color: zone.accent }]}>
+              Power {zone.recommendedPower}
+            </Text>
+          </View>
+          {zone.eliteZone ? (
+            <View style={[styles.zonePressurePill, styles.zoneElitePill]}>
+              <Text style={[styles.zonePressureText, { color: Colors.xpGold }]}>Elite Gate</Text>
+            </View>
+          ) : null}
+        </View>
 
         <View style={styles.zoneProgressTop}>
           <Text style={styles.zoneProgressLabel}>Zone progress</Text>
@@ -237,6 +261,29 @@ export default function WorldScreen() {
               </View>
 
               <Text style={styles.modalBody}>{activeZone?.atmosphere}</Text>
+
+              <View style={styles.modalPressureRow}>
+                <View style={styles.modalPressurePill}>
+                  <Text style={styles.modalPressureText}>
+                    Danger {activeZone?.dangerRating ?? "Low"}
+                  </Text>
+                </View>
+                <View style={styles.modalPressurePill}>
+                  <Text style={[styles.modalPressureText, { color: activeZone?.accent ?? Colors.primary }]}>
+                    Recommended Power {activeZone?.recommendedPower ?? 0}
+                  </Text>
+                </View>
+                {activeZone?.eliteZone ? (
+                  <View style={[styles.modalPressurePill, styles.modalElitePill]}>
+                    <Text style={[styles.modalPressureText, { color: Colors.xpGold }]}>Elite Zone</Text>
+                  </View>
+                ) : null}
+              </View>
+
+              <View style={styles.modalThreatCard}>
+                <Text style={styles.modalThreatLabel}>Gate Reading</Text>
+                <Text style={styles.modalThreatText}>{activeZone?.threatLabel}</Text>
+              </View>
 
               <View style={styles.modalProgressTop}>
                 <Text style={styles.modalProgressLabel}>Zone completion</Text>
@@ -450,6 +497,28 @@ const styles = StyleSheet.create({
   zoneStateTextOpen: { color: Colors.primary },
   zoneStateTextMastered: { color: Colors.success },
   zoneAtmosphere: { color: Colors.text, fontSize: 13, lineHeight: 20, marginTop: 12 },
+  zonePressureRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 12,
+  },
+  zonePressurePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+  },
+  zonePressureText: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  zoneElitePill: {
+    borderColor: Colors.xpGold + "35",
+  },
   zoneProgressTop: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -506,6 +575,49 @@ const styles = StyleSheet.create({
   modalTitle: { color: Colors.text, fontSize: 24, fontWeight: "800", marginTop: 4 },
   modalTagline: { color: Colors.textSecondary, fontSize: 13, marginTop: 4 },
   modalBody: { color: Colors.text, fontSize: 14, lineHeight: 22, marginTop: 16 },
+  modalPressureRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 16,
+  },
+  modalPressurePill: {
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+  },
+  modalPressureText: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  modalElitePill: {
+    borderColor: Colors.xpGold + "30",
+  },
+  modalThreatCard: {
+    marginTop: 16,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.accent + "26",
+    backgroundColor: Colors.background,
+  },
+  modalThreatLabel: {
+    color: Colors.accent,
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 1.3,
+  },
+  modalThreatText: {
+    color: Colors.text,
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 8,
+  },
   modalProgressTop: {
     flexDirection: "row",
     justifyContent: "space-between",

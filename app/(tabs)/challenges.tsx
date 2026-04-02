@@ -149,6 +149,45 @@ export default function BossRaids() {
     }
   };
 
+  const getThreatLevel = (challenge: RaidChallenge) => {
+    const difficulty = (challenge as any).difficulty;
+    switch (difficulty) {
+      case "E":
+        return "Scout";
+      case "D":
+        return "Guarded";
+      case "C":
+        return "Hunter-killer";
+      case "B":
+        return "Elite";
+      case "A":
+        return "Catastrophic";
+      case "S":
+        return "Monarch-class";
+      default:
+        return "Unknown";
+    }
+  };
+
+  const getWeaknessHint = (challenge: RaidChallenge) => {
+    const difficulty = (challenge as any).difficulty;
+    switch (difficulty) {
+      case "E":
+        return "Weakness: simple command recall";
+      case "D":
+        return "Weakness: clean command structure";
+      case "C":
+        return "Weakness: accurate text handling";
+      case "B":
+        return "Weakness: multi-step shell intent";
+      case "A":
+      case "S":
+        return "Weakness: precise system fluency";
+      default:
+        return "Weakness: correct tool selection";
+    }
+  };
+
   const getRankColor = (difficulty?: string) => {
     if (!difficulty) {
       return colors.gold;
@@ -251,6 +290,16 @@ export default function BossRaids() {
             <Text style={styles.focusText}>
               Best next boss check. This raid tests whether you can apply the next command skill cleanly under pressure.
             </Text>
+            <View style={styles.focusThreatRow}>
+              <View style={styles.focusThreatPill}>
+                <Text style={styles.focusThreatText}>Threat {getThreatLevel(focusChallenge)}</Text>
+              </View>
+              <View style={styles.focusThreatPill}>
+                <Text style={[styles.focusThreatText, { color: getRankColor((focusChallenge as any).difficulty) }]}>
+                  {getWeaknessHint(focusChallenge)}
+                </Text>
+              </View>
+            </View>
             <Text style={styles.focusAction}>Open encounter</Text>
           </TouchableOpacity>
         ) : null}
@@ -417,8 +466,24 @@ export default function BossRaids() {
                       "Defeat this raid with the right command."}
                   </Text>
 
+                  <View style={styles.battleMetaRow}>
+                    <View style={styles.battleMetaPill}>
+                      <Text style={styles.battleMetaText}>Threat {getThreatLevel(activeChallenge)}</Text>
+                    </View>
+                    <View style={styles.battleMetaPill}>
+                      <Text
+                        style={[
+                          styles.battleMetaText,
+                          { color: getRankColor((activeChallenge as any).difficulty) },
+                        ]}
+                      >
+                        {getWeaknessHint(activeChallenge)}
+                      </Text>
+                    </View>
+                  </View>
+
                   <View style={styles.contextCard}>
-                    <Text style={styles.contextLabel}>Encounter</Text>
+                    <Text style={styles.contextLabel}>Boss Intro</Text>
                     <Text style={styles.contextText}>{getEncounterCopy(activeChallenge)}</Text>
                     <Text style={styles.contextSubLabel}>Your Objective</Text>
                     <Text style={styles.taskText}>{getTask(activeChallenge)}</Text>
@@ -448,7 +513,10 @@ export default function BossRaids() {
 
                   {showVictory ? (
                     <View style={styles.victoryCard}>
-                      <Text style={styles.victoryLabel}>Rewards Claimed</Text>
+                      <Text style={styles.victoryLabel}>Loot Burst</Text>
+                      <Text style={styles.victoryBody}>
+                        The boss signal collapses. Experience, shards, and hunter momentum surge into your inventory.
+                      </Text>
                       <View style={styles.victoryRewardsRow}>
                         <View style={styles.victoryRewardPill}>
                           <Text style={styles.victoryRewardText}>
@@ -458,6 +526,11 @@ export default function BossRaids() {
                         <View style={styles.victoryRewardPill}>
                           <Text style={styles.victoryRewardText}>
                             +{raidShardReward} Shards
+                          </Text>
+                        </View>
+                        <View style={styles.victoryRewardPill}>
+                          <Text style={[styles.victoryRewardText, { color: colors.success }]}>
+                            Gate stabilized
                           </Text>
                         </View>
                       </View>
@@ -574,6 +647,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     marginTop: 12,
+  },
+  focusThreatRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 12,
+  },
+  focusThreatPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardAlt,
+  },
+  focusThreatText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: "700",
   },
   progressCard: {
     backgroundColor: colors.card,
@@ -770,6 +862,25 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 14,
   },
+  battleMetaRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 12,
+  },
+  battleMetaPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardAlt,
+  },
+  battleMetaText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: "700",
+  },
   contextCard: {
     backgroundColor: colors.cardAlt,
     borderRadius: 18,
@@ -842,6 +953,12 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 1,
     marginBottom: 10,
+  },
+  victoryBody: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 21,
+    marginBottom: 12,
   },
   victoryRewardsRow: {
     flexDirection: "row",

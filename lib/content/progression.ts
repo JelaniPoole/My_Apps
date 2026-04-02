@@ -244,6 +244,11 @@ export interface WorldZone {
   accent: string;
   progress: { completed: number; total: number; pct: number };
   state: "locked" | "unlocked" | "mastered";
+  gateState: "sealed" | "unstable" | "open" | "cleared";
+  dangerRating: "Low" | "Guarded" | "High" | "Extreme";
+  recommendedPower: number;
+  eliteZone: boolean;
+  threatLabel: string;
   unlockRequirement: string | null;
   recommendedLesson: (typeof orderedLessons)[number] | null;
   recommendedChallenge: (typeof orderedChallenges)[number] | null;
@@ -304,6 +309,25 @@ export function getWorldZones(
           category.challenges.includes(challenge.id) &&
           !completedChallenges.includes(challenge.id),
       ) ?? null;
+    const gateState: WorldZone["gateState"] = mastered
+      ? "cleared"
+      : !unlocked
+      ? "sealed"
+      : recommendedChallenge
+      ? "unstable"
+      : "open";
+    const dangerRating: WorldZone["dangerRating"] =
+      index >= 10 ? "Extreme" : index >= 7 ? "High" : index >= 4 ? "Guarded" : "Low";
+    const recommendedPower = 45 + index * 35;
+    const eliteZone = index >= 8 || category.name === "Advanced";
+    const threatLabel =
+      gateState === "sealed"
+        ? "Gate signature unavailable"
+        : gateState === "cleared"
+        ? "Threat suppressed"
+        : gateState === "unstable"
+        ? "Boss pressure detected"
+        : "Area stable";
 
     return {
       trackName: category.name,
@@ -314,6 +338,11 @@ export function getWorldZones(
       accent: meta.accent,
       progress: categoryProgress,
       state: mastered ? "mastered" : unlocked ? "unlocked" : "locked",
+      gateState,
+      dangerRating,
+      recommendedPower,
+      eliteZone,
+      threatLabel,
       unlockRequirement:
         unlocked || !previousZone
           ? null
@@ -335,6 +364,21 @@ export function getNextWorldZone(
     zones[zones.length - 1] ??
     null
   );
+}
+
+export function getNewlyUnlockedWorldZones(
+  previousLessons: string[],
+  previousChallenges: string[],
+  nextLessons: string[],
+  nextChallenges: string[],
+) {
+  const previousZones = getWorldZones(previousLessons, previousChallenges);
+  const nextZones = getWorldZones(nextLessons, nextChallenges);
+
+  return nextZones.filter((zone, index) => {
+    const previous = previousZones[index];
+    return previous?.state === "locked" && zone.state !== "locked";
+  });
 }
 
 export function getCompletedTrackMasteries(
@@ -426,17 +470,36 @@ export function getSystemMessages({
     orderedChallenges.find(
       (challenge) => !completedChallenges.includes(challenge.id),
     ) ?? null;
+  const nextZone = getNextWorldZone(completedLessons, completedChallenges);
   const uniqueCommands = new Set(
     terminalHistory.map((command) => command.trim().split(/\s+/)[0]).filter(Boolean),
   ).size;
 
   const messages: SystemMessage[] = [];
 
+  if (nextZone) {
+    messages.push({
+      id: "zone_pressure",
+      title:
+        nextZone.state === "locked"
+          ? "New Gate Signature Detected"
+          : nextZone.gateState === "unstable"
+          ? "Zone Pressure Rising"
+          : "Route Guidance Updated",
+      body:
+        nextZone.state === "locked"
+          ? `${nextZone.zoneName} remains sealed. ${nextZone.unlockRequirement}`
+          : `${nextZone.zoneName} is reading ${nextZone.dangerRating.toLowerCase()} pressure. ${nextZone.threatLabel}.`,
+      icon: nextZone.state === "locked" ? "lock-closed" : nextZone.gateState === "unstable" ? "alert-circle" : "map",
+      tone: nextZone.state === "locked" || nextZone.gateState === "unstable" ? "warning" : "primary",
+    });
+  }
+
   if (nextLesson) {
     messages.push({
       id: "lesson_focus",
       title: "System Quest Updated",
-      body: `Your next dungeon is ${nextLesson.title}. Clearing it strengthens ${nextLesson.statReward.type} and advances the ${nextLesson.category} track.`,
+      body: `Presence detected in ${nextLesson.category}. Clear ${nextLesson.title} to strengthen ${nextLesson.statReward.type} and push deeper into the zone.`,
       icon: "compass",
       tone: "primary",
     });
@@ -446,7 +509,7 @@ export function getSystemMessages({
     messages.push({
       id: "raid_focus",
       title: "Emergency Raid Available",
-      body: `${nextChallenge.title} is the next boss check. Rank ${nextChallenge.difficulty} clearance will award bonus hunter growth.`,
+      body: `${nextChallenge.title} is pressuring the route ahead. Threat level ${nextChallenge.difficulty}. Clear it to stabilize the area and claim combat rewards.`,
       icon: "flash",
       tone: "warning",
     });
@@ -465,20 +528,26 @@ export function getSystemMessages({
   if (essenceShards > 0) {
     messages.push({
       id: "shards",
-      title: "Essence Accumulation",
-      body: `You have collected ${essenceShards} essence shards from raids and missions. Future cosmetic unlocks can spend this currency.`,
-      icon: "diamond",
-      tone: "warning",
+      title: essenceShards >= 100 ? "Shadow Currency Resonance" : "Essence Accumulation",
+      body:
+        essenceShards >= 100
+          ? `${essenceShards} shards are vibrating in your inventory. The System predicts rare unlock potential.`
+          : `You have collected ${essenceShards} essence shards from raids and missions. Future cosmetic unlocks can spend this currency.`,
+      icon: essenceShards >= 100 ? "sparkles" : "diamond",
+      tone: essenceShards >= 100 ? "success" : "warning",
     });
   }
 
   if (uniqueCommands >= 8) {
     messages.push({
       id: "command_mastery",
-      title: "Terminal Mastery Rising",
-      body: `You have already used ${uniqueCommands} unique commands. The System recognizes broadening command fluency.`,
+      title: uniqueCommands >= 16 ? "Hidden Objective Progressed" : "Terminal Mastery Rising",
+      body:
+        uniqueCommands >= 16
+          ? `You have deployed ${uniqueCommands} unique commands. Hidden objective progress has been registered by the System.`
+          : `You have already used ${uniqueCommands} unique commands. The System recognizes broadening command fluency.`,
       icon: "terminal",
-      tone: "primary",
+      tone: uniqueCommands >= 16 ? "success" : "primary",
     });
   }
 
