@@ -16,7 +16,7 @@ function NativeTabLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="dungeons">
         <Icon sf={{ default: "map", selected: "map.fill" }} />
-        <Label>Dungeons</Label>
+        <Label>World</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="terminal">
         <Icon sf={{ default: "terminal", selected: "terminal.fill" }} />
@@ -70,7 +70,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="dungeons"
         options={{
-          title: "Dungeons",
+          title: "World",
           tabBarIcon: ({ color, size }) => <Ionicons name="map" size={size} color={color} />,
         }}
       />

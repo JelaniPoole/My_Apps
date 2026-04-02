@@ -866,7 +866,7 @@ export default function HunterDashboard() {
             <Ionicons name="map" size={18} color={Colors.primary} />
             <Text style={styles.sectionTitle}>World Map</Text>
             <Pressable
-              onPress={() => router.push("/world")}
+              onPress={() => router.push("/dungeons")}
               style={({ pressed }) => [styles.sectionLink, pressed && styles.pressed]}
             >
               <Text style={[styles.sectionLinkText, { color: Colors.primary }]}>Open World</Text>
@@ -874,7 +874,7 @@ export default function HunterDashboard() {
             </Pressable>
           </View>
           <Pressable
-            onPress={() => router.push("/world")}
+            onPress={() => router.push("/dungeons")}
             style={({ pressed }) => [styles.worldCard, pressed && styles.pressed]}
           >
             <LinearGradient colors={[Colors.primary + "16", Colors.surface]} style={styles.worldGradient}>
@@ -1189,7 +1189,7 @@ export default function HunterDashboard() {
                   style={styles.rankUpButton}
                   onPress={() => {
                     dismissZoneUnlock();
-                    router.push("/world");
+                    router.push("/dungeons");
                   }}
                 >
                   <Text style={styles.rankUpButtonText}>Enter Zone</Text>
