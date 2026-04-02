@@ -5,6 +5,7 @@ import {
   defaultOwnedFrames,
   defaultOwnedThemes,
   defaultOwnedTitles,
+  getTrackCosmeticReward,
   getNewlyMasteredTracks,
   getNextRank,
   getRank,
@@ -75,6 +76,11 @@ interface ProgressContextValue {
     name: string;
     statType: keyof Stats;
     shardsAwarded: number;
+    cosmeticReward?: {
+      category: "title" | "frame" | "theme";
+      label: string;
+      color: string;
+    } | null;
   } | null;
   addXp: (amount: number) => void;
   addShards: (amount: number) => void;
@@ -183,6 +189,11 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     name: string;
     statType: keyof Stats;
     shardsAwarded: number;
+    cosmeticReward?: {
+      category: "title" | "frame" | "theme";
+      label: string;
+      color: string;
+    } | null;
   } | null>(null);
 
   useEffect(() => {
@@ -314,11 +325,15 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
         updated.completedChallenges,
         updated.masteredTracks ?? [],
       );
+      const primaryTrackReward =
+        newlyMasteredTracks.length > 0
+          ? getTrackCosmeticReward(newlyMasteredTracks[0].name)
+          : null;
       const finalMasteredTracks = [
         ...(updated.masteredTracks ?? []),
         ...newlyMasteredTracks.map((category) => category.name),
       ];
-      const final = {
+      let final = {
         ...updated,
         currentStreak: streak,
         lastActiveDate: today,
@@ -327,6 +342,38 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
           newlyMasteredTracks.length * TRACK_MASTERY_SHARD_REWARD,
         masteredTracks: finalMasteredTracks,
       };
+      if (primaryTrackReward) {
+        if (
+          primaryTrackReward.category === "title" &&
+          !final.ownedTitles.includes(primaryTrackReward.unlockValue)
+        ) {
+          final = {
+            ...final,
+            ownedTitles: [...final.ownedTitles, primaryTrackReward.unlockValue],
+            title: primaryTrackReward.unlockValue,
+          };
+        }
+        if (
+          primaryTrackReward.category === "frame" &&
+          !final.ownedFrames.includes(primaryTrackReward.unlockValue)
+        ) {
+          final = {
+            ...final,
+            ownedFrames: [...final.ownedFrames, primaryTrackReward.unlockValue],
+            activeFrame: primaryTrackReward.unlockValue,
+          };
+        }
+        if (
+          primaryTrackReward.category === "theme" &&
+          !final.ownedThemes.includes(primaryTrackReward.unlockValue)
+        ) {
+          final = {
+            ...final,
+            ownedThemes: [...final.ownedThemes, primaryTrackReward.unlockValue],
+            activeTheme: primaryTrackReward.unlockValue,
+          };
+        }
+      }
       const nextRank = getRank(calculateLevel(final.xp));
       if (nextRank.rank !== previousRank.rank) {
         setPendingRankUp({ from: previousRank, to: nextRank });
@@ -337,6 +384,13 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
           name: track.name,
           statType: track.statType as keyof Stats,
           shardsAwarded: TRACK_MASTERY_SHARD_REWARD,
+          cosmeticReward: primaryTrackReward
+            ? {
+                category: primaryTrackReward.category,
+                label: primaryTrackReward.label,
+                color: primaryTrackReward.color,
+              }
+            : null,
         });
       }
       saveProgress(final);

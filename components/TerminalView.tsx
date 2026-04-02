@@ -3,6 +3,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } fr
 import * as Haptics from "expo-haptics";
 
 import Colors from "@/constants/colors";
+import { getTerminalThemePreview } from "@/lib/linux-data";
 
 interface TerminalLine {
   id: string;
@@ -607,56 +608,18 @@ export default function TerminalView({
 }
 
 function getTerminalTheme(themeId: string) {
-  switch (themeId) {
-    case "shadowcore":
-      return {
-        background: "#090811",
-        inputBg: "#110F1B",
-        border: "#352759",
-        prompt: "#64D2FF",
-        input: "#B794F4",
-        output: Colors.text,
-        error: Colors.error,
-        success: "#FFB800",
-        placeholder: "#5E5578",
-      };
-    case "frostbyte":
-      return {
-        background: "#07131A",
-        inputBg: "#0B1C24",
-        border: "#1E5362",
-        prompt: "#8BE9FD",
-        input: "#64D2FF",
-        output: "#DDF7FF",
-        error: "#FF7A8A",
-        success: "#9EF98D",
-        placeholder: "#5D8592",
-      };
-    case "emberline":
-      return {
-        background: "#140B09",
-        inputBg: "#1E110E",
-        border: "#5B2F24",
-        prompt: "#FFB800",
-        input: "#FF8A5B",
-        output: "#FFE9DE",
-        error: "#FF6B7D",
-        success: "#FFD36B",
-        placeholder: "#8C6358",
-      };
-    default:
-      return {
-        background: "#0A0E14",
-        inputBg: "#080C12",
-        border: Colors.border,
-        prompt: Colors.accent,
-        input: Colors.terminalGreen,
-        output: Colors.text,
-        error: Colors.error,
-        success: Colors.warning,
-        placeholder: Colors.textMuted,
-      };
-  }
+  const theme = getTerminalThemePreview(themeId);
+  return {
+    ...theme,
+    border: theme.border || Colors.border,
+    prompt: theme.prompt || Colors.accent,
+    input: theme.input || Colors.terminalGreen,
+    output: theme.output || Colors.text,
+    error: theme.error || Colors.error,
+    success: theme.success || Colors.warning,
+    placeholder: theme.placeholder || Colors.textMuted,
+    inputBg: theme.inputBg || "#080C12",
+  };
 }
 
 const styles = StyleSheet.create({

@@ -12,56 +12,8 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import Colors from "@/constants/colors";
-import { shopItems } from "@/lib/linux-data";
+import { getFrameColor, getTerminalThemePreview, shopItems } from "@/lib/linux-data";
 import { useProgress } from "@/lib/progress-context";
-
-function frameColor(frameId: string, fallback: string) {
-  switch (frameId) {
-    case "neon":
-      return "#64D2FF";
-    case "ember":
-      return "#FF8A5B";
-    default:
-      return fallback;
-  }
-}
-
-function getTerminalPreviewTheme(themeId: string) {
-  switch (themeId) {
-    case "shadowcore":
-      return {
-        background: "#090811",
-        border: "#352759",
-        prompt: "#64D2FF",
-        input: "#B794F4",
-        output: Colors.text,
-      };
-    case "frostbyte":
-      return {
-        background: "#07131A",
-        border: "#1E5362",
-        prompt: "#8BE9FD",
-        input: "#64D2FF",
-        output: "#DDF7FF",
-      };
-    case "emberline":
-      return {
-        background: "#140B09",
-        border: "#5B2F24",
-        prompt: "#FFB800",
-        input: "#FF8A5B",
-        output: "#FFE9DE",
-      };
-    default:
-      return {
-        background: "#0A0E14",
-        border: Colors.border,
-        prompt: Colors.accent,
-        input: Colors.terminalGreen,
-        output: Colors.text,
-      };
-  }
-}
 
 export default function ShopScreen() {
   const insets = useSafeAreaInsets();
@@ -92,6 +44,9 @@ export default function ShopScreen() {
     frames: shopItems.filter((item) => item.category === "frame"),
     themes: shopItems.filter((item) => item.category === "theme"),
   };
+  const ownedCosmetics =
+    ownedTitles.length + ownedFrames.length + ownedThemes.length - 3;
+  const totalCosmetics = shopItems.length;
 
   function owned(item: (typeof shopItems)[number]) {
     switch (item.category) {
@@ -173,12 +128,15 @@ export default function ShopScreen() {
         </View>
 
         <Animated.View entering={FadeInDown.duration(350)} style={styles.previewCard}>
-          <View style={[styles.previewFrame, { borderColor: frameColor(activeFrame, Colors.primary) }]}>
-            <Text style={[styles.previewRank, { color: frameColor(activeFrame, Colors.primary) }]}>H</Text>
+          <View style={[styles.previewFrame, { borderColor: getFrameColor(activeFrame, Colors.primary) }]}>
+            <Text style={[styles.previewRank, { color: getFrameColor(activeFrame, Colors.primary) }]}>H</Text>
           </View>
           <View style={styles.previewCopy}>
             <Text style={styles.previewTitle}>{title}</Text>
             <Text style={styles.previewText}>Active frame: {activeFrame} · Active theme: {activeTheme}</Text>
+            <Text style={styles.previewOwnedText}>
+              Cosmetic vault: {ownedCosmetics}/{totalCosmetics} unlocked
+            </Text>
           </View>
         </Animated.View>
 
@@ -212,7 +170,7 @@ export default function ShopScreen() {
           </Animated.View>
         ) : null}
 
-        <Text style={styles.sectionTitle}>Titles</Text>
+        <Text style={styles.sectionTitle}>Titles · {grouped.titles.length}</Text>
         {grouped.titles.map((item, index) => (
           <Animated.View key={item.id} entering={FadeInDown.duration(350).delay(40 * index)}>
             <Pressable style={({ pressed }) => [styles.itemCard, pressed && styles.pressed]} onPress={() => handlePress(item)}>
@@ -223,7 +181,7 @@ export default function ShopScreen() {
                 <Text style={styles.itemTitle}>{item.title}</Text>
                 <Text style={styles.itemDescription}>{item.description}</Text>
                 <View style={styles.titlePreview}>
-                  <Text style={[styles.titlePreviewRank, { color: frameColor(activeFrame, Colors.primary) }]}>H</Text>
+                  <Text style={[styles.titlePreviewRank, { color: getFrameColor(activeFrame, Colors.primary) }]}>H</Text>
                   <Text style={styles.titlePreviewText}>{item.unlockValue}</Text>
                 </View>
               </View>
@@ -235,7 +193,7 @@ export default function ShopScreen() {
           </Animated.View>
         ))}
 
-        <Text style={styles.sectionTitle}>Frames</Text>
+        <Text style={styles.sectionTitle}>Frames · {grouped.frames.length}</Text>
         {grouped.frames.map((item, index) => (
           <Animated.View key={item.id} entering={FadeInDown.duration(350).delay(40 * index)}>
             <Pressable style={({ pressed }) => [styles.itemCard, pressed && styles.pressed]} onPress={() => handlePress(item)}>
@@ -246,8 +204,8 @@ export default function ShopScreen() {
                 <Text style={styles.itemTitle}>{item.title}</Text>
                 <Text style={styles.itemDescription}>{item.description}</Text>
                 <View style={styles.framePreviewRow}>
-                  <View style={[styles.framePreviewBadge, { borderColor: frameColor(item.unlockValue, item.color) }]}>
-                    <Text style={[styles.framePreviewLetter, { color: frameColor(item.unlockValue, item.color) }]}>H</Text>
+                  <View style={[styles.framePreviewBadge, { borderColor: getFrameColor(item.unlockValue, item.color) }]}>
+                    <Text style={[styles.framePreviewLetter, { color: getFrameColor(item.unlockValue, item.color) }]}>H</Text>
                   </View>
                   <Text style={styles.framePreviewText}>Hunter profile frame preview</Text>
                 </View>
@@ -260,7 +218,7 @@ export default function ShopScreen() {
           </Animated.View>
         ))}
 
-        <Text style={styles.sectionTitle}>Terminal Themes</Text>
+        <Text style={styles.sectionTitle}>Terminal Themes · {grouped.themes.length}</Text>
         {grouped.themes.map((item, index) => (
           <Animated.View key={item.id} entering={FadeInDown.duration(350).delay(40 * index)}>
             <Pressable style={({ pressed }) => [styles.itemCard, pressed && styles.pressed]} onPress={() => handlePress(item)}>
@@ -274,21 +232,21 @@ export default function ShopScreen() {
                   style={[
                     styles.terminalPreview,
                     {
-                      backgroundColor: getTerminalPreviewTheme(item.unlockValue).background,
-                      borderColor: getTerminalPreviewTheme(item.unlockValue).border,
+                      backgroundColor: getTerminalThemePreview(item.unlockValue).background,
+                      borderColor: getTerminalThemePreview(item.unlockValue).border,
                     },
                   ]}
                 >
                   <Text style={styles.terminalPreviewLine}>
-                    <Text style={{ color: getTerminalPreviewTheme(item.unlockValue).prompt }}>hunter@system:~$ </Text>
-                    <Text style={{ color: getTerminalPreviewTheme(item.unlockValue).input }}>
+                    <Text style={{ color: getTerminalThemePreview(item.unlockValue).prompt }}>hunter@system:~$ </Text>
+                    <Text style={{ color: getTerminalThemePreview(item.unlockValue).input }}>
                       {item.preview ?? "preview"}
                     </Text>
                   </Text>
                   <Text
                     style={[
                       styles.terminalPreviewOutput,
-                      { color: getTerminalPreviewTheme(item.unlockValue).output },
+                      { color: getTerminalThemePreview(item.unlockValue).output },
                     ]}
                   >
                     Theme preview online.
@@ -361,6 +319,7 @@ const styles = StyleSheet.create({
   previewCopy: { flex: 1 },
   previewTitle: { color: Colors.text, fontSize: 17, fontWeight: "700" },
   previewText: { color: Colors.textSecondary, fontSize: 13, marginTop: 4 },
+  previewOwnedText: { color: Colors.accent, fontSize: 12, fontWeight: "700", marginTop: 8 },
   feedbackCard: {
     marginHorizontal: 16,
     marginTop: 10,

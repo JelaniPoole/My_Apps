@@ -14,6 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import Colors from "@/constants/colors";
 import {
+  getFrameColor,
   getAchievements,
   getCommandsByCategory,
   getCompletedTrackMasteries,
@@ -48,7 +49,7 @@ export default function StatsScreen() {
   const insets = useSafeAreaInsets();
   const {
     stats, level, rank, completedLessons, completedChallenges,
-    currentStreak, terminalHistory, totalPower, essenceShards, title,
+    currentStreak, terminalHistory, totalPower, essenceShards, title, activeFrame, activeTheme,
   } = useProgress();
   const webTop = Platform.OS === "web" ? 67 : 0;
   const grouped = getCommandsByCategory();
@@ -80,12 +81,24 @@ export default function StatsScreen() {
         <Animated.View entering={FadeInDown.duration(500)}>
           <LinearGradient colors={[Colors.primary + "20", Colors.surface]} style={styles.profileCard}>
             <View style={styles.profileRow}>
-              <View style={[styles.profileRank, { borderColor: rank.color }]}>
-                <Text style={[styles.profileRankText, { color: rank.color }]}>{rank.rank}</Text>
+              <View style={[styles.profileRank, { borderColor: getFrameColor(activeFrame, rank.color) }]}>
+                <Text style={[styles.profileRankText, { color: getFrameColor(activeFrame, rank.color) }]}>{rank.rank}</Text>
               </View>
               <View style={styles.profileInfo}>
                 <Text style={styles.profileTitle}>{title}</Text>
                 <Text style={styles.profileLevel}>{rank.title} · Level {level}</Text>
+                <View style={styles.profileLoadoutRow}>
+                  <View style={styles.profileLoadoutPill}>
+                    <Text style={styles.profileLoadoutLabel}>Frame</Text>
+                    <Text style={[styles.profileLoadoutValue, { color: getFrameColor(activeFrame, Colors.primary) }]}>
+                      {activeFrame}
+                    </Text>
+                  </View>
+                  <View style={styles.profileLoadoutPill}>
+                    <Text style={styles.profileLoadoutLabel}>Theme</Text>
+                    <Text style={styles.profileLoadoutValue}>{activeTheme}</Text>
+                  </View>
+                </View>
               </View>
               <View style={styles.profilePower}>
                 <Text style={styles.powerValue}>{totalPower}</Text>
@@ -276,6 +289,22 @@ const styles = StyleSheet.create({
   profileInfo: { flex: 1, marginLeft: 14 },
   profileTitle: { color: Colors.text, fontSize: 18, fontWeight: "700" },
   profileLevel: { color: Colors.textSecondary, fontSize: 13, marginTop: 2 },
+  profileLoadoutRow: { flexDirection: "row", gap: 8, marginTop: 10, flexWrap: "wrap" },
+  profileLoadoutPill: {
+    backgroundColor: Colors.background,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  profileLoadoutLabel: {
+    color: Colors.textMuted,
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  profileLoadoutValue: { color: Colors.text, fontSize: 12, fontWeight: "700", marginTop: 4 },
   profilePower: { alignItems: "center" },
   powerValue: { color: Colors.accent, fontSize: 24, fontWeight: "800" },
   powerLabel: { color: Colors.textMuted, fontSize: 11 },

@@ -410,6 +410,7 @@ export default function HunterDashboard() {
     nextRank,
     essenceShards,
     activeFrame,
+    activeTheme,
     title,
     currentStreak,
     totalPower,
@@ -657,6 +658,35 @@ export default function HunterDashboard() {
             <Ionicons name="diamond" size={20} color={Colors.xpGold} />
             <Text style={styles.quickStatValue}>{displayedShards}</Text>
             <Text style={styles.quickStatLabel}>Shards</Text>
+          </View>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(600).delay(140)} style={styles.loadoutCard}>
+          <View style={styles.loadoutHeader}>
+            <View style={styles.loadoutTitleRow}>
+              <Ionicons name="color-wand" size={16} color={Colors.primary} />
+              <Text style={styles.loadoutTitle}>Active Loadout</Text>
+            </View>
+            <Pressable onPress={() => router.push("/shop")} style={styles.loadoutLink}>
+              <Text style={styles.loadoutLinkText}>Open Shop</Text>
+              <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
+            </Pressable>
+          </View>
+          <View style={styles.loadoutPillRow}>
+            <View style={styles.loadoutPill}>
+              <Text style={styles.loadoutPillLabel}>Title</Text>
+              <Text style={styles.loadoutPillValue}>{displayName}</Text>
+            </View>
+            <View style={styles.loadoutPill}>
+              <Text style={styles.loadoutPillLabel}>Frame</Text>
+              <Text style={[styles.loadoutPillValue, { color: getFrameColor(activeFrame, Colors.primary) }]}>
+                {activeFrame}
+              </Text>
+            </View>
+            <View style={styles.loadoutPill}>
+              <Text style={styles.loadoutPillLabel}>Theme</Text>
+              <Text style={styles.loadoutPillValue}>{activeTheme}</Text>
+            </View>
           </View>
         </Animated.View>
 
@@ -1139,6 +1169,23 @@ export default function HunterDashboard() {
                     {pendingTrackMastery?.statType} path complete
                   </Text>
                 </View>
+                {pendingTrackMastery?.cosmeticReward ? (
+                  <View
+                    style={[
+                      styles.trackMasteryRewardPill,
+                      { borderColor: pendingTrackMastery.cosmeticReward.color + "55" },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.trackMasteryRewardText,
+                        { color: pendingTrackMastery.cosmeticReward.color },
+                      ]}
+                    >
+                      {pendingTrackMastery.cosmeticReward.label}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
               <Pressable style={styles.rankUpButton} onPress={dismissTrackMastery}>
                 <Text style={styles.rankUpButtonText}>Claim Mastery</Text>
@@ -1200,6 +1247,67 @@ const styles = StyleSheet.create({
   quickStatValue: { color: Colors.text, fontSize: 18, fontWeight: "700", marginTop: 4 },
   quickStatLabel: { color: Colors.textMuted, fontSize: 11, marginTop: 2 },
   quickStatDivider: { width: 1, backgroundColor: Colors.border, marginVertical: 4 },
+  loadoutCard: {
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  loadoutHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  loadoutTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  loadoutTitle: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  loadoutLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  loadoutLinkText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  loadoutPillRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 12,
+  },
+  loadoutPill: {
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minWidth: "31%",
+  },
+  loadoutPillLabel: {
+    color: Colors.textMuted,
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  loadoutPillValue: {
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 6,
+  },
 
   sectionHeader: {
     flexDirection: "row",
