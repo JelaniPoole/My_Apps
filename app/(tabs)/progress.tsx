@@ -17,6 +17,7 @@ import {
   getAchievements,
   getCommandsByCategory,
   getCompletedTrackMasteries,
+  getFrameColor,
   getRoadmapProgress,
   RANKS,
 } from "@/lib/linux-data";
@@ -48,8 +49,9 @@ export default function StatsScreen() {
   const insets = useSafeAreaInsets();
   const {
     stats, level, rank, completedLessons, completedChallenges,
-    currentStreak, terminalHistory, totalPower, essenceShards, hunterName, title,
+    currentStreak, terminalHistory, totalPower, essenceShards, hunterName, title, activeFrame,
   } = useProgress();
+  const frameAccent = getFrameColor(activeFrame, rank.color);
   const webTop = Platform.OS === "web" ? 67 : 0;
   const grouped = getCommandsByCategory();
   const uniqueCommands = new Set(terminalHistory.map((c) => c.split(" ")[0])).size;
@@ -78,14 +80,28 @@ export default function StatsScreen() {
         </View>
 
         <Animated.View entering={FadeInDown.duration(500)}>
-          <LinearGradient colors={[Colors.primary + "20", Colors.surface]} style={styles.profileCard}>
+          <LinearGradient
+            colors={[frameAccent + "24", Colors.surface]}
+            style={[styles.profileCard, { borderColor: frameAccent + "40" }]}
+          >
             <View style={styles.profileRow}>
-              <View style={[styles.profileRank, { borderColor: rank.color }]}>
-                <Text style={[styles.profileRankText, { color: rank.color }]}>{rank.rank}</Text>
+              <View
+                style={[
+                  styles.profileRank,
+                  {
+                    borderColor: frameAccent,
+                    shadowColor: frameAccent,
+                    shadowOpacity: 0.18,
+                    shadowRadius: 10,
+                  },
+                ]}
+              >
+                <Text style={[styles.profileRankText, { color: frameAccent }]}>{rank.rank}</Text>
               </View>
               <View style={styles.profileInfo}>
+                <Text style={[styles.profileHunterTitle, { color: frameAccent }]}>{title}</Text>
                 <Text style={styles.profileTitle}>{hunterName}</Text>
-                <Text style={styles.profileLevel}>{title} · {rank.title} · Level {level}</Text>
+                <Text style={styles.profileLevel}>{rank.title} · Level {level}</Text>
               </View>
               <View style={styles.profilePower}>
                 <Text style={styles.powerValue}>{totalPower}</Text>
@@ -274,6 +290,13 @@ const styles = StyleSheet.create({
   profileRank: { width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.background, justifyContent: "center", alignItems: "center", borderWidth: 2 },
   profileRankText: { fontSize: 24, fontWeight: "900" },
   profileInfo: { flex: 1, marginLeft: 14 },
+  profileHunterTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+    marginBottom: 4,
+  },
   profileTitle: { color: Colors.text, fontSize: 18, fontWeight: "700" },
   profileLevel: { color: Colors.textSecondary, fontSize: 13, marginTop: 2 },
   profilePower: { alignItems: "center" },

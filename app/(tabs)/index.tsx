@@ -27,6 +27,7 @@ import {
   getAchievements,
   getAdaptiveDailyQuests,
   getCompletedTrackMasteries,
+  getFrameColor,
   getRecommendedChallenges,
   getRecommendedLessons,
   getRoadmapProgress,
@@ -120,17 +121,6 @@ function getRankCeremony(rankLetter?: string) {
         scanOpacity: 0.24,
         mode: "system" as const,
       };
-  }
-}
-
-function getFrameColor(frameId: string, fallback: string) {
-  switch (frameId) {
-    case "neon":
-      return "#64D2FF";
-    case "ember":
-      return "#FF8A5B";
-    default:
-      return fallback;
   }
 }
 
@@ -540,6 +530,7 @@ export default function HunterDashboard() {
   const displayRank = rank.rank;
   const displayName = hunterName;
   const displayedShards = essenceShards ?? 0;
+  const frameAccent = getFrameColor(activeFrame, rank.color);
   const questShardReward = 5;
   const focusLesson = upcomingLessons[0] ?? null;
   const followupLesson = upcomingLessons[1] ?? null;
@@ -611,31 +602,32 @@ export default function HunterDashboard() {
             style={({ pressed }) => [pressed && styles.pressed]}
           >
             <LinearGradient
-              colors={[Colors.primary + "30", Colors.background]}
-              style={styles.headerGradient}
+              colors={[frameAccent + "30", Colors.background]}
+              style={[styles.headerGradient, { borderColor: frameAccent + "45" }]}
             >
               <View
                 style={[
                   styles.rankBadge,
                   {
-                    borderColor: getFrameColor(activeFrame, Colors.primary + "80"),
-                    shadowColor: getFrameColor(activeFrame, rank.color),
+                    borderColor: frameAccent,
+                    shadowColor: frameAccent,
                     shadowOpacity: 0.18,
                     shadowRadius: 12,
                   },
                 ]}
               >
-                <Text style={[styles.rankLetter, { color: getFrameColor(activeFrame, rank.color) }]}>{displayRank}</Text>
+                <Text style={[styles.rankLetter, { color: frameAccent }]}>{displayRank}</Text>
               </View>
 
               <View style={styles.headerInfo}>
+                <Text style={[styles.hunterTitle, { color: frameAccent }]}>{title}</Text>
                 <Text style={styles.rankTitle}>{displayName}</Text>
-                <Text style={styles.levelText}>{title} · {rank.title} · LV. {displayLevel}</Text>
+                <Text style={styles.levelText}>{rank.title} · LV. {displayLevel}</Text>
 
                 <View style={styles.xpBarContainer}>
                   <View style={styles.xpBarBg}>
                     <LinearGradient
-                      colors={[Colors.primary, Colors.accent]}
+                      colors={[frameAccent, Colors.accent]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                       style={[styles.xpBarFill, { width: `${xpProgress * 100}%` }]}
@@ -648,7 +640,7 @@ export default function HunterDashboard() {
 
                 <View style={styles.profileTapRow}>
                   <Text style={styles.profileTapText}>Tap profile to view loadout</Text>
-                  <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
+                  <Ionicons name="chevron-forward" size={14} color={frameAccent} />
                 </View>
               </View>
             </LinearGradient>
@@ -1378,6 +1370,13 @@ const styles = StyleSheet.create({
   },
   rankLetter: { fontSize: 32, fontWeight: "900" },
   headerInfo: { flex: 1, marginLeft: 16 },
+  hunterTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 1.4,
+    marginBottom: 4,
+  },
   rankTitle: { color: Colors.text, fontSize: 18, fontWeight: "700" },
   levelText: { color: Colors.primaryGlow, fontSize: 14, fontWeight: "600", marginTop: 2 },
   xpBarContainer: { marginTop: 10 },
