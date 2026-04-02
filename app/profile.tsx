@@ -24,6 +24,13 @@ import { useProgress } from "@/lib/progress-context";
 
 type PickerType = "name" | "title" | "frame" | "theme" | null;
 
+function formatCosmeticLabel(value: string) {
+  return value
+    .split(/[_-]/g)
+    .map((part) => (part ? part.charAt(0).toUpperCase() + part.slice(1) : part))
+    .join(" ");
+}
+
 function buildTitleOptions(ownedTitles: string[]) {
   return ownedTitles.map((ownedTitle) => {
     const item = shopItems.find(
@@ -87,6 +94,7 @@ export default function ProfileScreen() {
   } = useProgress();
   const [draftName, setDraftName] = useState(hunterName);
   const webTop = Platform.OS === "web" ? 67 : 0;
+  const frameAccent = getFrameColor(activeFrame, rank.color);
 
   const titleOptions = useMemo(() => buildTitleOptions(ownedTitles), [ownedTitles]);
   const frameOptions = useMemo(() => buildFrameOptions(ownedFrames), [ownedFrames]);
@@ -122,16 +130,22 @@ export default function ProfileScreen() {
         </View>
 
         <Animated.View entering={FadeInDown.duration(360)} style={styles.heroCard}>
-          <LinearGradient colors={[Colors.primary + "22", Colors.surface]} style={styles.heroGradient}>
-            <View style={[styles.heroBadge, { borderColor: getFrameColor(activeFrame, rank.color) }]}>
-              <Text style={[styles.heroBadgeText, { color: getFrameColor(activeFrame, rank.color) }]}>
+          <LinearGradient
+            colors={[frameAccent + "22", Colors.surface]}
+            style={[styles.heroGradient, { borderColor: frameAccent + "40" }]}
+          >
+            <View style={[styles.heroBadge, { borderColor: frameAccent }]}>
+              <Text style={[styles.heroBadgeText, { color: frameAccent }]}>
                 {rank.rank}
               </Text>
             </View>
             <View style={styles.heroCopy}>
+              <Text style={[styles.heroHunterTitle, { color: frameAccent }]}>{title}</Text>
               <Text style={styles.heroName}>{hunterName}</Text>
-              <Text style={styles.heroMeta}>{title} · {rank.title} · Level {level}</Text>
-              <Text style={styles.heroTheme}>Frame: {activeFrame} · Theme: {activeTheme}</Text>
+              <Text style={styles.heroMeta}>{rank.title} · Level {level}</Text>
+              <Text style={styles.heroTheme}>
+                Frame: {formatCosmeticLabel(activeFrame)} · Theme: {formatCosmeticLabel(activeTheme)}
+              </Text>
             </View>
           </LinearGradient>
         </Animated.View>
@@ -170,7 +184,7 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.menuCopy}>
                 <Text style={styles.menuTitle}>Frames</Text>
-                <Text style={styles.menuValue}>{activeFrame} · {ownedFrames.length} unlocked</Text>
+                <Text style={styles.menuValue}>{formatCosmeticLabel(activeFrame)} · {ownedFrames.length} Unlocked</Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
@@ -183,7 +197,7 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.menuCopy}>
                 <Text style={styles.menuTitle}>Terminal Themes</Text>
-                <Text style={styles.menuValue}>{activeTheme} · {ownedThemes.length} unlocked</Text>
+                <Text style={styles.menuValue}>{formatCosmeticLabel(activeTheme)} · {ownedThemes.length} Unlocked</Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
@@ -266,7 +280,7 @@ export default function ProfileScreen() {
                     <Text style={[styles.frameBadgeText, { color: option.color }]}>H</Text>
                   </View>
                   <View style={styles.optionCopy}>
-                    <Text style={styles.optionTitle}>{option.value}</Text>
+                    <Text style={styles.optionTitle}>{formatCosmeticLabel(option.value)}</Text>
                     <Text style={styles.optionText}>{option.description}</Text>
                   </View>
                   {activeFrame === option.value ? <Ionicons name="checkmark-circle" size={20} color={Colors.success} /> : null}
@@ -295,7 +309,7 @@ export default function ProfileScreen() {
                     }}
                   >
                     <View style={styles.optionCopy}>
-                      <Text style={styles.optionTitle}>{option.value}</Text>
+                      <Text style={styles.optionTitle}>{formatCosmeticLabel(option.value)}</Text>
                       <Text style={styles.optionText}>{option.description}</Text>
                       <View
                         style={[

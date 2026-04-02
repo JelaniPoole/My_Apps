@@ -622,7 +622,7 @@ export default function HunterDashboard() {
               <View style={styles.headerInfo}>
                 <Text style={[styles.hunterTitle, { color: frameAccent }]}>{title}</Text>
                 <Text style={styles.rankTitle}>{displayName}</Text>
-                <Text style={styles.levelText}>{rank.title} · LV. {displayLevel}</Text>
+                <Text style={[styles.levelText, { color: frameAccent }]}>{rank.title} · LV. {displayLevel}</Text>
 
                 <View style={styles.xpBarContainer}>
                   <View style={styles.xpBarBg}>
@@ -639,7 +639,7 @@ export default function HunterDashboard() {
                 </View>
 
                 <View style={styles.profileTapRow}>
-                  <Text style={styles.profileTapText}>Tap profile to view loadout</Text>
+                  <Text style={[styles.profileTapText, { color: frameAccent }]}>Tap Profile to View Loadout</Text>
                   <Ionicons name="chevron-forward" size={14} color={frameAccent} />
                 </View>
               </View>

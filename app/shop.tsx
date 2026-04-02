@@ -15,6 +15,17 @@ import Colors from "@/constants/colors";
 import { getFrameColor, getTerminalThemePreview, shopItems } from "@/lib/linux-data";
 import { useProgress } from "@/lib/progress-context";
 
+function formatCosmeticLabel(value: string) {
+  return value
+    .split(/[_-]/g)
+    .map((part) => (part ? part.charAt(0).toUpperCase() + part.slice(1) : part))
+    .join(" ");
+}
+
+function getBadgeLetter(name: string) {
+  return name.trim().charAt(0).toUpperCase() || "H";
+}
+
 export default function ShopScreen() {
   const insets = useSafeAreaInsets();
   const [feedback, setFeedback] = React.useState<{
@@ -40,6 +51,7 @@ export default function ShopScreen() {
   } = useProgress();
 
   const webTop = Platform.OS === "web" ? 67 : 0;
+  const frameAccent = getFrameColor(activeFrame, Colors.primary);
   const grouped = {
     titles: shopItems.filter((item) => item.category === "title"),
     frames: shopItems.filter((item) => item.category === "frame"),
@@ -129,14 +141,17 @@ export default function ShopScreen() {
         </View>
 
         <Animated.View entering={FadeInDown.duration(350)} style={styles.previewCard}>
-          <View style={[styles.previewFrame, { borderColor: getFrameColor(activeFrame, Colors.primary) }]}>
-            <Text style={[styles.previewRank, { color: getFrameColor(activeFrame, Colors.primary) }]}>H</Text>
+          <View style={[styles.previewFrame, { borderColor: frameAccent }]}>
+            <Text style={[styles.previewRank, { color: frameAccent }]}>{getBadgeLetter(hunterName)}</Text>
           </View>
           <View style={styles.previewCopy}>
+            <Text style={[styles.previewHunterTitle, { color: frameAccent }]}>{title}</Text>
             <Text style={styles.previewTitle}>{hunterName}</Text>
-            <Text style={styles.previewText}>{title} · Active frame: {activeFrame} · Active theme: {activeTheme}</Text>
+            <Text style={styles.previewText}>
+              Active Frame: {formatCosmeticLabel(activeFrame)} · Active Theme: {formatCosmeticLabel(activeTheme)}
+            </Text>
             <Text style={styles.previewOwnedText}>
-              Cosmetic vault: {ownedCosmetics}/{totalCosmetics} unlocked
+              Cosmetic Vault: {ownedCosmetics}/{totalCosmetics} Unlocked
             </Text>
           </View>
         </Animated.View>
@@ -182,8 +197,8 @@ export default function ShopScreen() {
                 <Text style={styles.itemTitle}>{item.title}</Text>
                 <Text style={styles.itemDescription}>{item.description}</Text>
                 <View style={styles.titlePreview}>
-                  <Text style={[styles.titlePreviewRank, { color: getFrameColor(activeFrame, Colors.primary) }]}>H</Text>
-                  <Text style={styles.titlePreviewText}>{item.unlockValue}</Text>
+                  <Text style={[styles.titlePreviewRank, { color: frameAccent }]}>{getBadgeLetter(hunterName)}</Text>
+                  <Text style={styles.titlePreviewText}>{formatCosmeticLabel(item.unlockValue)}</Text>
                 </View>
               </View>
               <View style={styles.itemMeta}>
@@ -208,7 +223,7 @@ export default function ShopScreen() {
                   <View style={[styles.framePreviewBadge, { borderColor: getFrameColor(item.unlockValue, item.color) }]}>
                     <Text style={[styles.framePreviewLetter, { color: getFrameColor(item.unlockValue, item.color) }]}>H</Text>
                   </View>
-                  <Text style={styles.framePreviewText}>Hunter profile frame preview</Text>
+                  <Text style={styles.framePreviewText}>Hunter Profile Frame Preview</Text>
                 </View>
               </View>
               <View style={styles.itemMeta}>
@@ -318,6 +333,13 @@ const styles = StyleSheet.create({
   },
   previewRank: { fontSize: 24, fontWeight: "900" },
   previewCopy: { flex: 1 },
+  previewHunterTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+    marginBottom: 4,
+  },
   previewTitle: { color: Colors.text, fontSize: 17, fontWeight: "700" },
   previewText: { color: Colors.textSecondary, fontSize: 13, marginTop: 4 },
   previewOwnedText: { color: Colors.accent, fontSize: 12, fontWeight: "700", marginTop: 8 },
