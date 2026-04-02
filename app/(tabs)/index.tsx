@@ -33,6 +33,8 @@ import {
   getSystemMessages,
   getNextChallengeRecommendation,
   getNextLessonRecommendation,
+  getNextWorldZone,
+  getWorldZones,
   RANKS,
 } from "@/lib/linux-data";
 
@@ -493,6 +495,14 @@ export default function HunterDashboard() {
     () => getCompletedTrackMasteries(completedLessons, completedChallenges),
     [completedLessons, completedChallenges],
   );
+  const worldZones = useMemo(
+    () => getWorldZones(completedLessons, completedChallenges),
+    [completedLessons, completedChallenges],
+  );
+  const nextWorldZone = useMemo(
+    () => getNextWorldZone(completedLessons, completedChallenges),
+    [completedLessons, completedChallenges],
+  );
 
   function getQuestProgress(quest: { type: string }) {
     switch (quest.type) {
@@ -872,6 +882,52 @@ export default function HunterDashboard() {
               </View>
             </>
           ) : null}
+
+          <View style={styles.sectionHeader}>
+            <Ionicons name="map" size={18} color={Colors.primary} />
+            <Text style={styles.sectionTitle}>World Map</Text>
+            <Pressable
+              onPress={() => router.push("/world")}
+              style={({ pressed }) => [styles.sectionLink, pressed && styles.pressed]}
+            >
+              <Text style={[styles.sectionLinkText, { color: Colors.primary }]}>Open World</Text>
+              <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
+            </Pressable>
+          </View>
+          <Pressable
+            onPress={() => router.push("/world")}
+            style={({ pressed }) => [styles.worldCard, pressed && styles.pressed]}
+          >
+            <LinearGradient colors={[Colors.primary + "16", Colors.surface]} style={styles.worldGradient}>
+              <View style={styles.worldTop}>
+                <View style={styles.worldIconWrap}>
+                  <Ionicons name="navigate" size={20} color={Colors.primary} />
+                </View>
+                <View style={styles.worldCopy}>
+                  <Text style={styles.worldEyebrow}>Next Zone</Text>
+                  <Text style={styles.worldTitle}>{nextWorldZone?.zoneName ?? "World Clear"}</Text>
+                  <Text style={styles.worldText}>
+                    {nextWorldZone?.state === "locked"
+                      ? nextWorldZone.unlockRequirement
+                      : nextWorldZone?.recommendedLesson
+                      ? `Resume ${nextWorldZone.recommendedLesson.title} to keep this zone moving.`
+                      : nextWorldZone?.recommendedChallenge
+                      ? `The next boss check here is ${nextWorldZone.recommendedChallenge.title}.`
+                      : "Every visible zone is already cleared."}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.worldFooter}>
+                <Text style={styles.worldMeta}>
+                  {worldZones.filter((zone) => zone.state !== "locked").length}/{worldZones.length} zones open
+                </Text>
+                <Text style={styles.worldMeta}>
+                  {worldZones.filter((zone) => zone.state === "mastered").length} cleared
+                </Text>
+                <Text style={styles.worldAction}>Enter Map</Text>
+              </View>
+            </LinearGradient>
+          </Pressable>
 
           <View style={styles.sectionHeader}>
             <Ionicons name="ribbon" size={18} color={Colors.xpGold} />
@@ -1444,6 +1500,67 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontSize: 11,
     fontWeight: "600",
+  },
+  worldCard: {
+    marginHorizontal: 16,
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: Colors.primary + "28",
+  },
+  worldGradient: {
+    padding: 16,
+  },
+  worldTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  worldIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.primary + "28",
+    marginRight: 12,
+  },
+  worldCopy: { flex: 1 },
+  worldEyebrow: {
+    color: Colors.primary,
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  worldTitle: {
+    color: Colors.text,
+    fontSize: 18,
+    fontWeight: "700",
+    marginTop: 6,
+  },
+  worldText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 8,
+  },
+  worldFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 14,
+  },
+  worldMeta: {
+    color: Colors.textMuted,
+    fontSize: 12,
+  },
+  worldAction: {
+    marginLeft: "auto",
+    color: Colors.primary,
+    fontSize: 13,
+    fontWeight: "700",
   },
 
   statsCard: {

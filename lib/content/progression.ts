@@ -139,6 +139,116 @@ export const roadmapCategories: CategoryRoadmap[] = [
   { name: "Advanced", icon: "construct", lessons: ["20"], challenges: ["c50"], statType: "AGI" },
 ];
 
+const zoneMeta: Record<
+  string,
+  {
+    zoneName: string;
+    tagline: string;
+    icon: string;
+    accent: string;
+    atmosphere: string;
+  }
+> = {
+  Navigation: {
+    zoneName: "Tutorial Caves",
+    tagline: "Learn to move without getting lost.",
+    icon: "compass",
+    accent: "#64D2FF",
+    atmosphere: "Stone halls, faint system lights, and pathfinding trials.",
+  },
+  Files: {
+    zoneName: "Forge Depths",
+    tagline: "Shape, move, and control the objects around you.",
+    icon: "folder-open",
+    accent: "#FF8A5B",
+    atmosphere: "Molten file chambers where structure and control matter.",
+  },
+  Viewing: {
+    zoneName: "Archive Ruins",
+    tagline: "Read the world before it reads you.",
+    icon: "eye",
+    accent: "#9B8CFF",
+    atmosphere: "Silent halls packed with old text, logs, and hidden clues.",
+  },
+  "Pipes & Text": {
+    zoneName: "Signal Ridge",
+    tagline: "Route information with precision.",
+    icon: "funnel",
+    accent: "#7CFF4F",
+    atmosphere: "Wind-torn relay towers where clean command flow wins fights.",
+  },
+  Permissions: {
+    zoneName: "Warden Vault",
+    tagline: "Prove what access you truly control.",
+    icon: "lock-closed",
+    accent: "#FFD166",
+    atmosphere: "Guarded gates and sealed layers of command authority.",
+  },
+  Processes: {
+    zoneName: "Pulse Reactor",
+    tagline: "Track what is alive, active, and burning cycles.",
+    icon: "sync",
+    accent: "#5DAEFF",
+    atmosphere: "A living core full of movement, timing, and pressure.",
+  },
+  System: {
+    zoneName: "Citadel Core",
+    tagline: "Command the deeper machinery of the system.",
+    icon: "server",
+    accent: "#5DAEFF",
+    atmosphere: "Cold chambers of status checks, uptime, and system control.",
+  },
+  Packages: {
+    zoneName: "Supply District",
+    tagline: "Pull in tools and prepare for stronger hunts.",
+    icon: "cube",
+    accent: "#4DFFB8",
+    atmosphere: "Storage vaults and vendor systems humming under pressure.",
+  },
+  Logs: {
+    zoneName: "Echo Archive",
+    tagline: "Read what the system remembers.",
+    icon: "reader",
+    accent: "#C3B5FF",
+    atmosphere: "Recorded failures, hidden events, and trails of truth.",
+  },
+  Git: {
+    zoneName: "Branch Observatory",
+    tagline: "Track versions, branches, and safe recoveries.",
+    icon: "git-branch",
+    accent: "#FF6B35",
+    atmosphere: "Suspended bridges of history and alternate code paths.",
+  },
+  Network: {
+    zoneName: "Signal Frontier",
+    tagline: "Reach outward and test remote paths.",
+    icon: "globe",
+    accent: "#64D2FF",
+    atmosphere: "Long-range pings, distant nodes, and unstable links.",
+  },
+  Advanced: {
+    zoneName: "Monarch Threshold",
+    tagline: "The final systems only strong hunters can approach.",
+    icon: "sparkles",
+    accent: "#FF2D55",
+    atmosphere: "High-tier trials where everything learned starts combining.",
+  },
+};
+
+export interface WorldZone {
+  trackName: string;
+  zoneName: string;
+  tagline: string;
+  atmosphere: string;
+  icon: string;
+  accent: string;
+  progress: { completed: number; total: number; pct: number };
+  state: "locked" | "unlocked" | "mastered";
+  unlockRequirement: string | null;
+  recommendedLesson: (typeof orderedLessons)[number] | null;
+  recommendedChallenge: (typeof orderedChallenges)[number] | null;
+}
+
 export const TRACK_MASTERY_SHARD_REWARD = 30;
 
 export function getRoadmapProgress(completedLessons: string[], completedChallenges: string[]) {
@@ -153,6 +263,78 @@ export function getRoadmapProgress(completedLessons: string[], completedChalleng
   });
 
   return progress;
+}
+
+export function getWorldZones(
+  completedLessons: string[],
+  completedChallenges: string[],
+): WorldZone[] {
+  const progress = getRoadmapProgress(completedLessons, completedChallenges);
+
+  return roadmapCategories.map((category, index) => {
+    const meta = zoneMeta[category.name] ?? {
+      zoneName: category.name,
+      tagline: `Advance the ${category.name} discipline.`,
+      icon: "map",
+      accent: "#64D2FF",
+      atmosphere: "A new region of the System is waiting.",
+    };
+    const categoryProgress = progress[category.name] ?? {
+      completed: 0,
+      total: category.lessons.length + category.challenges.length,
+      pct: 0,
+    };
+    const previousZone = index > 0 ? roadmapCategories[index - 1] : null;
+    const previousProgress = previousZone ? progress[previousZone.name] : null;
+    const hasAnyProgress = categoryProgress.completed > 0;
+    const unlocked =
+      index === 0 ||
+      hasAnyProgress ||
+      (previousProgress ? previousProgress.pct === 1 : false);
+    const mastered = categoryProgress.total > 0 && categoryProgress.pct === 1;
+    const recommendedLesson =
+      orderedLessons.find(
+        (lesson) =>
+          category.lessons.includes(lesson.id) &&
+          !completedLessons.includes(lesson.id),
+      ) ?? null;
+    const recommendedChallenge =
+      orderedChallenges.find(
+        (challenge) =>
+          category.challenges.includes(challenge.id) &&
+          !completedChallenges.includes(challenge.id),
+      ) ?? null;
+
+    return {
+      trackName: category.name,
+      zoneName: meta.zoneName,
+      tagline: meta.tagline,
+      atmosphere: meta.atmosphere,
+      icon: meta.icon,
+      accent: meta.accent,
+      progress: categoryProgress,
+      state: mastered ? "mastered" : unlocked ? "unlocked" : "locked",
+      unlockRequirement:
+        unlocked || !previousZone
+          ? null
+          : `Master ${zoneMeta[previousZone.name]?.zoneName ?? previousZone.name} to unlock.`,
+      recommendedLesson,
+      recommendedChallenge,
+    };
+  });
+}
+
+export function getNextWorldZone(
+  completedLessons: string[],
+  completedChallenges: string[],
+) {
+  const zones = getWorldZones(completedLessons, completedChallenges);
+  return (
+    zones.find((zone) => zone.state === "unlocked" && zone.progress.pct < 1) ??
+    zones.find((zone) => zone.state === "locked") ??
+    zones[zones.length - 1] ??
+    null
+  );
 }
 
 export function getCompletedTrackMasteries(

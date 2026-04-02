@@ -18,6 +18,7 @@ function RootLayoutNav() {
       <Stack.Screen name="achievements" options={{ headerShown: false }} />
       <Stack.Screen name="shop" options={{ headerShown: false }} />
       <Stack.Screen name="quests" options={{ headerShown: false }} />
+      <Stack.Screen name="world" options={{ headerShown: false }} />
     </Stack>
   );
 }
