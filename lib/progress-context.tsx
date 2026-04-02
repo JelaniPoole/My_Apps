@@ -32,6 +32,7 @@ interface ProgressData {
   xp: number;
   essenceShards: number;
   stats: Stats;
+  hunterName: string;
   ownedTitles: string[];
   ownedFrames: string[];
   ownedThemes: string[];
@@ -52,6 +53,7 @@ interface ProgressContextValue {
   xp: number;
   essenceShards: number;
   stats: Stats;
+  hunterName: string;
   ownedTitles: string[];
   ownedFrames: string[];
   ownedThemes: string[];
@@ -85,6 +87,7 @@ interface ProgressContextValue {
   addXp: (amount: number) => void;
   addShards: (amount: number) => void;
   spendShards: (amount: number) => boolean;
+  setHunterName: (name: string) => void;
   addStat: (type: keyof Stats, amount: number) => void;
   completeLesson: (lessonId: string) => void;
   completeChallenge: (challengeId: string) => void;
@@ -107,6 +110,7 @@ const defaultProgress: ProgressData = {
   xp: 0,
   essenceShards: 0,
   stats: { STR: 1, INT: 1, AGI: 1, VIT: 1, DEF: 1 },
+  hunterName: "Hunter",
   ownedTitles: defaultOwnedTitles,
   ownedFrames: defaultOwnedFrames,
   ownedThemes: defaultOwnedThemes,
@@ -140,6 +144,7 @@ async function fetchServerProgress(): Promise<ServerProgressPayload | null> {
       xp: typeof data.xp === "number" ? data.xp : nested.xp,
       stats: typeof data.stats === "object" ? data.stats : nested.stats,
       title: data.title ?? nested.title,
+      hunterName: data.hunterName ?? nested.hunterName,
     };
     if (typeof normalized.xp !== "number" || typeof normalized.stats !== "object") return null;
     return normalized;
@@ -215,6 +220,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
           ownedTitles: parsed.ownedTitles ?? defaultProgress.ownedTitles,
           ownedFrames: parsed.ownedFrames ?? defaultProgress.ownedFrames,
           ownedThemes: parsed.ownedThemes ?? defaultProgress.ownedThemes,
+          hunterName: parsed.hunterName ?? defaultProgress.hunterName,
           activeFrame: parsed.activeFrame ?? defaultProgress.activeFrame,
           activeTheme: parsed.activeTheme ?? defaultProgress.activeTheme,
           dailyProgress: {
@@ -264,6 +270,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
           ownedTitles: Array.from(new Set([...(prev.ownedTitles ?? []), ...(server.ownedTitles ?? [])])),
           ownedFrames: Array.from(new Set([...(prev.ownedFrames ?? []), ...(server.ownedFrames ?? [])])),
           ownedThemes: Array.from(new Set([...(prev.ownedThemes ?? []), ...(server.ownedThemes ?? [])])),
+          hunterName: server.hunterName ?? prev.hunterName,
           activeFrame: server.activeFrame ?? prev.activeFrame,
           activeTheme: server.activeTheme ?? prev.activeTheme,
           completedLessons: Array.from(new Set([...prev.completedLessons, ...(server.completedLessons ?? [])])),
@@ -405,6 +412,12 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
 
   function addShards(amount: number) {
     updateProgress((prev) => ({ ...prev, essenceShards: prev.essenceShards + amount }));
+  }
+
+  function setHunterName(name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    updateProgress((prev) => ({ ...prev, hunterName: trimmed.slice(0, 24) }));
   }
 
   function spendShards(amount: number) {
@@ -557,6 +570,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       xp: progress.xp,
       essenceShards: progress.essenceShards,
       stats: progress.stats,
+      hunterName: progress.hunterName,
       ownedTitles: progress.ownedTitles,
       ownedFrames: progress.ownedFrames,
       ownedThemes: progress.ownedThemes,
@@ -581,6 +595,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       addXp,
       addShards,
       spendShards,
+      setHunterName,
       addStat,
       completeLesson,
       completeChallenge,

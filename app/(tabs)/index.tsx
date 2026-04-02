@@ -411,8 +411,8 @@ export default function HunterDashboard() {
     rank,
     nextRank,
     essenceShards,
+    hunterName,
     activeFrame,
-    activeTheme,
     title,
     currentStreak,
     totalPower,
@@ -534,7 +534,7 @@ export default function HunterDashboard() {
   const displayLevel = level;
   const displayXp = xp;
   const displayRank = rank.rank;
-  const displayName = title;
+  const displayName = hunterName;
   const displayedShards = essenceShards ?? 0;
   const questShardReward = 5;
   const focusLesson = upcomingLessons[0] ?? null;
@@ -600,43 +600,53 @@ export default function HunterDashboard() {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View entering={FadeInDown.duration(600)}>
-          <LinearGradient
-            colors={[Colors.primary + "30", Colors.background]}
-            style={styles.headerGradient}
+          <Pressable
+            onPress={() => router.push("/profile")}
+            style={({ pressed }) => [pressed && styles.pressed]}
           >
-            <View
-              style={[
-                styles.rankBadge,
-                {
-                  borderColor: getFrameColor(activeFrame, Colors.primary + "80"),
-                  shadowColor: getFrameColor(activeFrame, rank.color),
-                  shadowOpacity: 0.18,
-                  shadowRadius: 12,
-                },
-              ]}
+            <LinearGradient
+              colors={[Colors.primary + "30", Colors.background]}
+              style={styles.headerGradient}
             >
-              <Text style={[styles.rankLetter, { color: getFrameColor(activeFrame, rank.color) }]}>{displayRank}</Text>
-            </View>
-
-            <View style={styles.headerInfo}>
-              <Text style={styles.rankTitle}>{displayName}</Text>
-              <Text style={styles.levelText}>{rank.title} · LV. {displayLevel}</Text>
-
-              <View style={styles.xpBarContainer}>
-                <View style={styles.xpBarBg}>
-                  <LinearGradient
-                    colors={[Colors.primary, Colors.accent]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={[styles.xpBarFill, { width: `${xpProgress * 100}%` }]}
-                  />
-                </View>
-                <Text style={styles.xpBarText}>
-                  {displayXp} XP
-                </Text>
+              <View
+                style={[
+                  styles.rankBadge,
+                  {
+                    borderColor: getFrameColor(activeFrame, Colors.primary + "80"),
+                    shadowColor: getFrameColor(activeFrame, rank.color),
+                    shadowOpacity: 0.18,
+                    shadowRadius: 12,
+                  },
+                ]}
+              >
+                <Text style={[styles.rankLetter, { color: getFrameColor(activeFrame, rank.color) }]}>{displayRank}</Text>
               </View>
-            </View>
-          </LinearGradient>
+
+              <View style={styles.headerInfo}>
+                <Text style={styles.rankTitle}>{displayName}</Text>
+                <Text style={styles.levelText}>{title} · {rank.title} · LV. {displayLevel}</Text>
+
+                <View style={styles.xpBarContainer}>
+                  <View style={styles.xpBarBg}>
+                    <LinearGradient
+                      colors={[Colors.primary, Colors.accent]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={[styles.xpBarFill, { width: `${xpProgress * 100}%` }]}
+                    />
+                  </View>
+                  <Text style={styles.xpBarText}>
+                    {displayXp} XP
+                  </Text>
+                </View>
+
+                <View style={styles.profileTapRow}>
+                  <Text style={styles.profileTapText}>Tap profile to view loadout</Text>
+                  <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
+                </View>
+              </View>
+            </LinearGradient>
+          </Pressable>
         </Animated.View>
 
         <Animated.View entering={FadeInDown.duration(600).delay(100)} style={styles.quickStats}>
@@ -668,35 +678,6 @@ export default function HunterDashboard() {
             <Ionicons name="diamond" size={20} color={Colors.xpGold} />
             <Text style={styles.quickStatValue}>{displayedShards}</Text>
             <Text style={styles.quickStatLabel}>Shards</Text>
-          </View>
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.duration(600).delay(140)} style={styles.loadoutCard}>
-          <View style={styles.loadoutHeader}>
-            <View style={styles.loadoutTitleRow}>
-              <Ionicons name="color-wand" size={16} color={Colors.primary} />
-              <Text style={styles.loadoutTitle}>Active Loadout</Text>
-            </View>
-            <Pressable onPress={() => router.push("/shop")} style={styles.loadoutLink}>
-              <Text style={styles.loadoutLinkText}>Open Shop</Text>
-              <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
-            </Pressable>
-          </View>
-          <View style={styles.loadoutPillRow}>
-            <View style={styles.loadoutPill}>
-              <Text style={styles.loadoutPillLabel}>Title</Text>
-              <Text style={styles.loadoutPillValue}>{displayName}</Text>
-            </View>
-            <View style={styles.loadoutPill}>
-              <Text style={styles.loadoutPillLabel}>Frame</Text>
-              <Text style={[styles.loadoutPillValue, { color: getFrameColor(activeFrame, Colors.primary) }]}>
-                {activeFrame}
-              </Text>
-            </View>
-            <View style={styles.loadoutPill}>
-              <Text style={styles.loadoutPillLabel}>Theme</Text>
-              <Text style={styles.loadoutPillValue}>{activeTheme}</Text>
-            </View>
           </View>
         </Animated.View>
 
@@ -1288,6 +1269,17 @@ const styles = StyleSheet.create({
   xpBarBg: { height: 8, backgroundColor: Colors.surface, borderRadius: 4, overflow: "hidden" },
   xpBarFill: { height: "100%", borderRadius: 4 },
   xpBarText: { color: Colors.textSecondary, fontSize: 11, marginTop: 4 },
+  profileTapRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 10,
+  },
+  profileTapText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: "700",
+  },
 
   quickStats: {
     flexDirection: "row",
@@ -1303,67 +1295,6 @@ const styles = StyleSheet.create({
   quickStatValue: { color: Colors.text, fontSize: 18, fontWeight: "700", marginTop: 4 },
   quickStatLabel: { color: Colors.textMuted, fontSize: 11, marginTop: 2 },
   quickStatDivider: { width: 1, backgroundColor: Colors.border, marginVertical: 4 },
-  loadoutCard: {
-    backgroundColor: Colors.surface,
-    marginHorizontal: 16,
-    marginTop: 12,
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  loadoutHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  loadoutTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  loadoutTitle: {
-    color: Colors.text,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  loadoutLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  loadoutLinkText: {
-    color: Colors.primary,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  loadoutPillRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 12,
-  },
-  loadoutPill: {
-    backgroundColor: Colors.background,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    minWidth: "31%",
-  },
-  loadoutPillLabel: {
-    color: Colors.textMuted,
-    fontSize: 10,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  },
-  loadoutPillValue: {
-    color: Colors.text,
-    fontSize: 13,
-    fontWeight: "700",
-    marginTop: 6,
-  },
 
   sectionHeader: {
     flexDirection: "row",

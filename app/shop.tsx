@@ -24,6 +24,7 @@ export default function ShopScreen() {
   } | null>(null);
   const {
     essenceShards,
+    hunterName,
     ownedTitles,
     ownedFrames,
     ownedThemes,
@@ -132,8 +133,8 @@ export default function ShopScreen() {
             <Text style={[styles.previewRank, { color: getFrameColor(activeFrame, Colors.primary) }]}>H</Text>
           </View>
           <View style={styles.previewCopy}>
-            <Text style={styles.previewTitle}>{title}</Text>
-            <Text style={styles.previewText}>Active frame: {activeFrame} · Active theme: {activeTheme}</Text>
+            <Text style={styles.previewTitle}>{hunterName}</Text>
+            <Text style={styles.previewText}>{title} · Active frame: {activeFrame} · Active theme: {activeTheme}</Text>
             <Text style={styles.previewOwnedText}>
               Cosmetic vault: {ownedCosmetics}/{totalCosmetics} unlocked
             </Text>
